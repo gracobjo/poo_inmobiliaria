@@ -38,6 +38,7 @@ class Casa:
         habitaciones: int,
         estado: EstadoCasa = EstadoCasa.DISPONIBLE,
         localidad: str = "",
+        id: int | None = None,
     ) -> None:
         """Crea una vivienda e incrementa el contador global.
 
@@ -49,6 +50,7 @@ class Casa:
             habitaciones: Número de habitaciones (>= 1).
             estado: Estado inicial (por defecto ``DISPONIBLE``).
             localidad: Municipio o localidad (opcional).
+            id: Identificador de persistencia (SQLite), opcional.
 
         Raises:
             ValueError: Si algún dato no supera la validación.
@@ -68,7 +70,10 @@ class Casa:
             raise TypeError("El estado debe ser un valor de EstadoCasa.")
         if not isinstance(localidad, str):
             raise TypeError("La localidad debe ser una cadena.")
+        if id is not None and (not isinstance(id, int) or isinstance(id, bool) or id < 1):
+            raise ValueError("El id de persistencia debe ser un entero >= 1.")
 
+        self._id: int | None = id
         self._direccion: str = direccion.strip()
         self._codigo_postal: str = codigo_postal.strip()
         self._metros_cuadrados: float = float(metros_cuadrados)
@@ -84,6 +89,18 @@ class Casa:
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------
+
+    @property
+    def id(self) -> int | None:
+        """Identificador de persistencia en SQLite, si existe."""
+        return self._id
+
+    @id.setter
+    def id(self, valor: int | None) -> None:
+        """Asigna el id tras insertar en base de datos."""
+        if valor is not None and (not isinstance(valor, int) or isinstance(valor, bool) or valor < 1):
+            raise ValueError("El id de persistencia debe ser un entero >= 1.")
+        self._id = valor
 
     @property
     def direccion(self) -> str:
@@ -338,6 +355,14 @@ class Casa:
             raise ValueError("La vivienda no está en reforma.")
         self._estado = EstadoCasa.DISPONIBLE
 
+    def restaurar_historial(self, operaciones: list[TipoOperacion]) -> None:
+        """Restaura el historial desde persistencia (uso interno/repositorio)."""
+        self._historial_operaciones = list(operaciones)
+
+    def asociar_contrato(self, contrato: Contrato | None) -> None:
+        """Asocia o limpia el contrato cargado desde persistencia."""
+        self._contrato = contrato
+
     # ------------------------------------------------------------------
     # Métodos de clase
     # ------------------------------------------------------------------
@@ -393,6 +418,7 @@ class Casa:
             habitaciones=datos["habitaciones"],
             estado=estado,
             localidad=str(datos.get("localidad", "")),
+            id=datos.get("id"),
         )
 
     @classmethod

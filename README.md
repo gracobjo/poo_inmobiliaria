@@ -29,26 +29,18 @@ El sistema permite dar de alta propiedades, venderlas (con impuesto AITP), alqui
 
 ```text
 poo_inmobiliaria/
-├── main.py                          # Punto de entrada
+├── main.py                          # Punto de entrada (UI gráfica)
 ├── README.md
+├── data/                            # SQLite (inmobiliaria.db)
 ├── ejemplos/
-│   └── demo_completa.py             # Demostración de todos los conceptos POO
+│   └── demo_completa.py             # Demo por consola (--demo)
 ├── src/
-│   ├── __init__.py
-│   ├── modelos/
-│   │   ├── __init__.py
-│   │   ├── casa.py                  # Clase Casa (núcleo del dominio)
-│   │   ├── contrato.py              # Clase Contrato
-│   │   └── inquilino.py             # Clase Inquilino
-│   ├── servicios/
-│   │   ├── __init__.py
-│   │   └── gestion_inmobiliaria.py  # Gestión de cartera
-│   └── utils/
-│       ├── __init__.py
-│       ├── constantes.py            # Enums EstadoCasa y TipoOperacion
-│       └── validadores.py           # ValidadoresInmobiliarios
+│   ├── modelos/                     # Casa, Contrato, Inquilino
+│   ├── persistencia/                # SQLite (Database + Repositorio)
+│   ├── servicios/                   # GestionInmobiliaria + AppInmobiliaria
+│   ├── ui/                          # Interfaz tkinter Agente/Cliente
+│   └── utils/                       # Enums y validadores
 └── tests/
-    ├── __init__.py
     ├── test_casa.py
     └── test_contrato.py
 ```
@@ -66,27 +58,26 @@ poo_inmobiliaria/
 
 Desde la raíz del proyecto (`poo_inmobiliaria/`):
 
-### Demo completa (recomendado)
+### Interfaz gráfica Agente / Cliente (recomendado)
 
 ```bash
 python main.py
 ```
 
-Equivale a ejecutar directamente:
+Se abre una ventana tkinter con dos perfiles:
+
+| Perfil | Puede hacer |
+|---|---|
+| **Agente** | Alta de viviendas, reserva, venta, alquiler, reformas, informe y gestión de solicitudes |
+| **Cliente** | Buscar disponibles, ver detalle, solicitar visita/compra/alquiler y comprobar la regla del 35 % |
+
+Los datos se guardan en `data/inmobiliaria.db` (SQLite). La primera ejecución crea un inventario de ejemplo.
+
+### Demo por consola
 
 ```bash
-python -m ejemplos.demo_completa
+python main.py --demo
 ```
-
-La demo muestra, en orden:
-
-1. Creación de objetos y atributos de clase  
-2. Reserva y venta con AITP  
-3. Alquiler, contrato y regla del 35 %  
-4. Decoración y reforma con IVA  
-5. Cálculos de €/m², comparación de inversión y rentabilidad  
-6. Informe de cartera  
-7. Encapsulamiento y `try`/`except` ante datos inválidos  
 
 ### Tests unitarios
 
