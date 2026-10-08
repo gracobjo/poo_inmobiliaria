@@ -36,6 +36,7 @@ class Database:
                 precio REAL NOT NULL,
                 habitaciones INTEGER NOT NULL,
                 estado TEXT NOT NULL,
+                tipo_vivienda TEXT NOT NULL DEFAULT 'PISO',
                 historial TEXT NOT NULL DEFAULT ''
             );
 
@@ -72,7 +73,19 @@ class Database:
             );
             """
         )
+        self._migrar_columnas()
         self._conn.commit()
+
+    def _migrar_columnas(self) -> None:
+        """Añade columnas nuevas a instalaciones ya existentes."""
+        columnas = {
+            fila["name"]
+            for fila in self._conn.execute("PRAGMA table_info(casas)").fetchall()
+        }
+        if "tipo_vivienda" not in columnas:
+            self._conn.execute(
+                "ALTER TABLE casas ADD COLUMN tipo_vivienda TEXT NOT NULL DEFAULT 'PISO'"
+            )
 
     def cerrar(self) -> None:
         """Cierra la conexión."""

@@ -20,6 +20,10 @@ poo_inmobiliaria/
 │   │   ├── casa.py
 │   │   ├── contrato.py
 │   │   └── inquilino.py
+│   ├── importacion/             # CSV/TXT/JSON/Excel/dict → modelos
+│   │   ├── fuentes.py
+│   │   ├── mapeo.py
+│   │   └── importador.py
 │   ├── persistencia/            # SQLite
 │   │   ├── database.py
 │   │   └── repositorio.py

@@ -1,0 +1,19 @@
+[
+  {
+    "address": "Calle JSON 1",
+    "postal": "29001",
+    "city": "Málaga",
+    "m2": 40,
+    "price": 140000,
+    "rooms": 1,
+    "status": "DISPONIBLE"
+  },
+  {
+    "direccion": "Calle JSON 2",
+    "codigo_postal": "50001",
+    "localidad": "Zaragoza",
+    "metros_cuadrados": 78,
+    "precio": 198000,
+    "habitaciones": 3
+  }
+]

@@ -117,7 +117,17 @@ Buenas prácticas:
 | CP inválido | Rango 01000–52999 |
 | Contador `total_casas` raro | `AppInmobiliaria.cargar()` lo recalcula |
 
-## 10. Roadmap técnico sugerido
+## 10. Importación de datos
+
+Ver el documento dedicado [09-importacion-datos.md](09-importacion-datos.md): requisitos, UML, CSV de prueba y API.
+
+Puntos clave:
+
+- Paquete `src/importacion/`
+- UI: `filedialog` en Agente (`Importar datos…`)
+- CSV de tipologías: `data/ejemplos/casas_10_tipos.csv`
+
+## 11. Roadmap técnico sugerido
 
 1. Autenticación real (usuario/contraseña, roles).
 2. API REST (FastAPI) reutilizando dominio.

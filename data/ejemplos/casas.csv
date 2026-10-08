@@ -1,0 +1,4 @@
+direccion;codigo_postal;localidad;metros_cuadrados;precio;habitaciones;estado
+Calle Ejemplo 1;28001;Madrid;55;175000;2;DISPONIBLE
+Calle Ejemplo 2;08002;Barcelona;72;265000;3;DISPONIBLE
+Av. del Puerto 10;46011;Valencia;90;210000;4;RESERVADA

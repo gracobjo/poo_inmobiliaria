@@ -1,0 +1,13 @@
+tipo_vivienda;direccion;codigo_postal;localidad;metros_cuadrados;precio;habitaciones;estado
+PISO;Calle Alcalá 120 3ºB;28009;Madrid;78;295000;3;DISPONIBLE
+ATICO;Paseo de Gracia 55 Ático;08007;Barcelona;110;620000;3;DISPONIBLE
+ESTUDIO;Calle San Vicente 8;46002;Valencia;32;125000;1;DISPONIBLE
+DUPLEX;Avenida de América 40;28002;Madrid;145;410000;4;RESERVADA
+LOFT;Calle Bailén 22;48003;Bilbao;95;275000;2;DISPONIBLE
+CHALET;Urbanización El Soto 14;28232;Las Rozas;220;685000;5;DISPONIBLE
+ADOSADO;Calle Los Olivos 9;29640;Fuengirola;160;390000;4;DISPONIBLE
+PAREADO;Camino del Mar 3;08860;Castelldefels;185;545000;4;DISPONIBLE
+CASA_RURAL;Paraje La Dehesa 2;10600;Plasencia;200;240000;4;DISPONIBLE
+BUNGALOW;Avenida del Sol 18;03130;Santa Pola;90;215000;3;DISPONIBLE
+LOCAL;Calle Larios 5 Bajo;29015;Málaga;120;350000;1;DISPONIBLE
+OFICINA;Paseo de la Castellana 100;28046;Madrid;180;780000;1;DISPONIBLE

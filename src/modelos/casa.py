@@ -7,7 +7,7 @@ from typing import Any
 
 from src.modelos.contrato import Contrato
 from src.modelos.inquilino import Inquilino
-from src.utils.constantes import EstadoCasa, TipoOperacion
+from src.utils.constantes import EstadoCasa, TipoOperacion, TipoVivienda
 from src.utils.validadores import ValidadoresInmobiliarios
 
 
@@ -39,6 +39,7 @@ class Casa:
         estado: EstadoCasa = EstadoCasa.DISPONIBLE,
         localidad: str = "",
         id: int | None = None,
+        tipo_vivienda: TipoVivienda = TipoVivienda.PISO,
     ) -> None:
         """Crea una vivienda e incrementa el contador global.
 
@@ -51,10 +52,11 @@ class Casa:
             estado: Estado inicial (por defecto ``DISPONIBLE``).
             localidad: Municipio o localidad (opcional).
             id: Identificador de persistencia (SQLite), opcional.
+            tipo_vivienda: Tipología del inmueble (por defecto ``PISO``).
 
         Raises:
             ValueError: Si algún dato no supera la validación.
-            TypeError: Si ``estado`` no es un ``EstadoCasa``.
+            TypeError: Si ``estado`` o ``tipo_vivienda`` no son enums válidos.
         """
         if not ValidadoresInmobiliarios.es_string_no_vacio(direccion):
             raise ValueError("La dirección no puede estar vacía.")
@@ -68,6 +70,8 @@ class Casa:
             raise ValueError("El número de habitaciones debe ser un entero >= 1.")
         if not isinstance(estado, EstadoCasa):
             raise TypeError("El estado debe ser un valor de EstadoCasa.")
+        if not isinstance(tipo_vivienda, TipoVivienda):
+            raise TypeError("El tipo de vivienda debe ser un valor de TipoVivienda.")
         if not isinstance(localidad, str):
             raise TypeError("La localidad debe ser una cadena.")
         if id is not None and (not isinstance(id, int) or isinstance(id, bool) or id < 1):
@@ -81,6 +85,7 @@ class Casa:
         self._habitaciones: int = habitaciones
         self._estado: EstadoCasa = estado
         self._localidad: str = localidad.strip()
+        self._tipo_vivienda: TipoVivienda = tipo_vivienda
         self._contrato: Contrato | None = None
         self._historial_operaciones: list[TipoOperacion] = []
 
@@ -116,6 +121,11 @@ class Casa:
     def localidad(self) -> str:
         """Municipio o localidad de la vivienda."""
         return self._localidad
+
+    @property
+    def tipo_vivienda(self) -> TipoVivienda:
+        """Tipología del inmueble."""
+        return self._tipo_vivienda
 
     @property
     def metros_cuadrados(self) -> float:
@@ -410,6 +420,17 @@ class Casa:
         else:
             raise ValueError("El estado debe ser un EstadoCasa o su nombre.")
 
+        tipo_raw: Any = datos.get("tipo_vivienda", TipoVivienda.PISO)
+        if isinstance(tipo_raw, TipoVivienda):
+            tipo: TipoVivienda = tipo_raw
+        elif isinstance(tipo_raw, str):
+            try:
+                tipo = TipoVivienda[tipo_raw.strip().upper().replace(" ", "_")]
+            except KeyError as exc:
+                raise ValueError(f"Tipo de vivienda desconocido: {tipo_raw!r}.") from exc
+        else:
+            raise ValueError("El tipo de vivienda debe ser un TipoVivienda o su nombre.")
+
         return cls(
             direccion=datos["direccion"],
             codigo_postal=datos["codigo_postal"],
@@ -419,6 +440,7 @@ class Casa:
             estado=estado,
             localidad=str(datos.get("localidad", "")),
             id=datos.get("id"),
+            tipo_vivienda=tipo,
         )
 
     @classmethod

@@ -12,6 +12,7 @@
 | [06 · Manual del desarrollador](06-manual-desarrollador.md) | Entorno, convenciones, extensión y tests |
 | [07 · Manual de usuario](07-manual-usuario.md) | Guía paso a paso Agente y Cliente |
 | [08 · Interfaz de usuario (UI)](08-interfaz-ui.md) | Pantallas, flujos, widgets y estilo visual |
+| [09 · Importación de datos](09-importacion-datos.md) | CSV, TXT, JSON, Excel, dict, DataFrame |
 
 ## Arranque rápido
 

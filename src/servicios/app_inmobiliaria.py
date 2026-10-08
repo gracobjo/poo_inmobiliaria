@@ -5,13 +5,13 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+from src.importacion.fuentes import FuenteDatos
+from src.importacion.importador import ImportadorDatos, ResultadoImportacion
 from src.modelos.casa import Casa
-from src.modelos.contrato import Contrato
 from src.modelos.inquilino import Inquilino
 from src.persistencia.database import Database
 from src.persistencia.repositorio import RepositorioInmobiliario
 from src.servicios.gestion_inmobiliaria import GestionInmobiliaria
-from src.utils.constantes import EstadoCasa
 
 
 class AppInmobiliaria:
@@ -22,6 +22,7 @@ class AppInmobiliaria:
         self.ruta_db: Path = Path(ruta_db) if ruta_db else raiz / "data" / "inmobiliaria.db"
         self._database = Database(self.ruta_db)
         self._repo = RepositorioInmobiliario(self._database)
+        self._importador = ImportadorDatos()
         self.gestion = GestionInmobiliaria()
         self.cargar()
         if self._repo.contar_casas() == 0:
@@ -88,6 +89,56 @@ class AppInmobiliaria:
     def atender_solicitud(self, solicitud_id: int) -> None:
         """Marca una solicitud como atendida."""
         self._repo.actualizar_estado_solicitud(solicitud_id, "ATENDIDA")
+
+    def importar_casas(
+        self,
+        fuente: FuenteDatos,
+        *,
+        delimitador: str | None = None,
+        persistir: bool = True,
+    ) -> ResultadoImportacion:
+        """Importa viviendas desde CSV/TXT/JSON/Excel/dict/list/DataFrame.
+
+        Args:
+            fuente: Ruta de archivo o estructura de datos en memoria.
+            delimitador: Delimitador opcional para CSV/TXT.
+            persistir: Si es ``True``, guarda en SQLite las casas válidas.
+
+        Returns:
+            ``ResultadoImportacion`` con objetos creados y errores por fila.
+        """
+        resultado = self._importador.importar_casas(fuente, delimitador=delimitador)
+        if persistir:
+            persistidos: list[Casa] = []
+            for casa in resultado.exitosos:
+                try:
+                    # Evita reutilizar ids de fichero que puedan chocar con SQLite.
+                    casa.id = None
+                    persistidos.append(self.agregar_casa(casa))
+                except (ValueError, TypeError) as error:
+                    resultado.errores.append(f"Persistencia ({casa.direccion}): {error}")
+            resultado.exitosos = persistidos
+            self.cargar()
+        return resultado
+
+    def importar_inquilinos(
+        self,
+        fuente: FuenteDatos,
+        *,
+        delimitador: str | None = None,
+        persistir: bool = True,
+    ) -> ResultadoImportacion:
+        """Importa clientes/inquilinos desde las mismas fuentes que las casas."""
+        resultado = self._importador.importar_inquilinos(
+            fuente, delimitador=delimitador
+        )
+        if persistir:
+            for inquilino in list(resultado.exitosos):
+                try:
+                    self._repo.guardar_cliente(inquilino)
+                except (ValueError, TypeError) as error:
+                    resultado.errores.append(f"Persistencia ({inquilino.dni}): {error}")
+        return resultado
 
     def cerrar(self) -> None:
         """Cierra la base de datos."""

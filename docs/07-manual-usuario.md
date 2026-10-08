@@ -98,6 +98,17 @@ La tabla muestra todas las viviendas (id, dirección, localidad, precio, m², ha
 2. Completa dirección, CP, localidad, m², precio y habitaciones.
 3. **Guardar**
 
+### 5.2 bis Importar desde archivo (navegación al fichero)
+
+1. En el panel Agente, pulsa **Importar datos…**
+2. Se abre el **explorador de Windows** (carpeta inicial: `data/ejemplos`)
+3. Navega y selecciona el fichero, por ejemplo **`casas_10_tipos.csv`** (12 viviendas de distintos tipos)
+4. Acepta: verás un resumen y la tabla se actualiza (columna **Tipo**)
+
+Formatos: `.csv`, `.txt`, `.json`, `.xlsx` (Excel requiere `pip install openpyxl`).
+
+Guía detallada: [docs/09-importacion-datos.md](09-importacion-datos.md).
+
 ### 5.3 Operaciones sobre una vivienda seleccionada
 
 | Botón | Cuándo usarlo |

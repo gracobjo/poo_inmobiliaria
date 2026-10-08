@@ -1,0 +1,3 @@
+direccion|cp|ciudad|m2|precio|hab
+Plaza Central 3|41003|Sevilla|48|155000|2
+Rua Nova 7|15001|A Coruña|63|189000|3

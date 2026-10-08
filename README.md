@@ -18,6 +18,7 @@ Toda la documentación de construcción, arquitectura, UML y manuales está en [
 | [Manual desarrollador](docs/06-manual-desarrollador.md) | Extensión, tests, BD |
 | [Manual de usuario](docs/07-manual-usuario.md) | Guía paso a paso |
 | [UI](docs/08-interfaz-ui.md) | Pantallas, widgets y estilos |
+| [Importación de datos](docs/09-importacion-datos.md) | CSV, TXT, JSON, Excel, dict… |
 
 ---
 

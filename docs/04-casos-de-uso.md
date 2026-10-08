@@ -84,6 +84,11 @@ Igual que UC04 con tipos `COMPRA` o `ALQUILER`.
 - **Flujo:** Nueva vivienda → formulario (dirección, CP, localidad, m², precio, hab.) → Guardar.
 - **Postcondición:** Insertada en SQLite y visible en tabla.
 
+### UC08b · Importar viviendas desde fichero
+- **Flujo:** Importar datos… → explorador de archivos → elegir CSV/TXT/JSON/Excel → resumen.
+- **Postcondición:** Filas válidas persistidas; inválidas listadas como error.
+- **Detalle completo:** [09-importacion-datos.md](09-importacion-datos.md)
+
 ### UC09 · Reservar / Liberar
 - **Reservar:** solo desde `DISPONIBLE`.
 - **Liberar:** desde `RESERVADA` o `ALQUILADA` (limpia contrato).

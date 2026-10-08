@@ -39,3 +39,35 @@ class TipoOperacion(Enum):
     ALQUILER = auto()
     REFORMA = auto()
     DECORACION = auto()
+
+
+class TipoVivienda(Enum):
+    """Tipología constructiva o de uso de un inmueble.
+
+    Attributes:
+        PISO: Vivienda en bloque plurifamiliar.
+        ATICO: Última planta con posibles terrazas.
+        ESTUDIO: Unidad diurna sin dormitorio separado.
+        DUPLEX: Distribución en dos plantas.
+        LOFT: Espacio diáfano tipo industrial.
+        CHALET: Vivienda unifamiliar independiente.
+        ADOSADO: Unifamiliar en hilera.
+        PAREADO: Unifamiliar compartiendo medianera.
+        CASA_RURAL: Vivienda en entorno rural.
+        BUNGALOW: Unifamiliar de una planta.
+        LOCAL: Local comercial.
+        OFICINA: Uso terciario de oficinas.
+    """
+
+    PISO = auto()
+    ATICO = auto()
+    ESTUDIO = auto()
+    DUPLEX = auto()
+    LOFT = auto()
+    CHALET = auto()
+    ADOSADO = auto()
+    PAREADO = auto()
+    CASA_RURAL = auto()
+    BUNGALOW = auto()
+    LOCAL = auto()
+    OFICINA = auto()

@@ -9,7 +9,7 @@ from src.modelos.casa import Casa
 from src.modelos.contrato import Contrato
 from src.modelos.inquilino import Inquilino
 from src.persistencia.database import Database
-from src.utils.constantes import EstadoCasa, TipoOperacion
+from src.utils.constantes import EstadoCasa, TipoOperacion, TipoVivienda
 
 
 class RepositorioInmobiliario:
@@ -37,8 +37,8 @@ class RepositorioInmobiliario:
                 """
                 INSERT INTO casas (
                     direccion, codigo_postal, localidad, metros_cuadrados,
-                    precio, habitaciones, estado, historial
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    precio, habitaciones, estado, tipo_vivienda, historial
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     casa.direccion,
@@ -48,6 +48,7 @@ class RepositorioInmobiliario:
                     casa.precio,
                     casa.habitaciones,
                     casa.estado.name,
+                    casa.tipo_vivienda.name,
                     historial,
                 ),
             )
@@ -58,7 +59,7 @@ class RepositorioInmobiliario:
                 UPDATE casas SET
                     direccion = ?, codigo_postal = ?, localidad = ?,
                     metros_cuadrados = ?, precio = ?, habitaciones = ?,
-                    estado = ?, historial = ?
+                    estado = ?, tipo_vivienda = ?, historial = ?
                 WHERE id = ?
                 """,
                 (
@@ -69,6 +70,7 @@ class RepositorioInmobiliario:
                     casa.precio,
                     casa.habitaciones,
                     casa.estado.name,
+                    casa.tipo_vivienda.name,
                     historial,
                     casa.id,
                 ),
@@ -110,6 +112,12 @@ class RepositorioInmobiliario:
 
     def _fila_a_casa(self, fila: Any) -> Casa:
         estado = EstadoCasa[fila["estado"]]
+        tipo_nombre = "PISO"
+        try:
+            tipo_nombre = fila["tipo_vivienda"] or "PISO"
+        except (KeyError, IndexError):
+            tipo_nombre = "PISO"
+        tipo = TipoVivienda[str(tipo_nombre).strip().upper()]
         casa = Casa(
             direccion=fila["direccion"],
             codigo_postal=fila["codigo_postal"],
@@ -119,6 +127,7 @@ class RepositorioInmobiliario:
             estado=estado,
             localidad=fila["localidad"] or "",
             id=fila["id"],
+            tipo_vivienda=tipo,
         )
         # Evita inflar total_casas al recargar: se ajusta desde el servicio.
         historial_raw = (fila["historial"] or "").strip()

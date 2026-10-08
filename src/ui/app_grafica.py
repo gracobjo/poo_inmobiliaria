@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import tkinter as tk
 from datetime import date
-from tkinter import messagebox, simpledialog, ttk
+from pathlib import Path
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import Any
 
 from src.modelos.casa import Casa
@@ -150,10 +151,11 @@ class AppGrafica(tk.Tk):
         cuerpo.add(izq, weight=3)
         cuerpo.add(der, weight=2)
 
-        cols = ("id", "direccion", "localidad", "precio", "m2", "hab", "estado")
+        cols = ("id", "tipo", "direccion", "localidad", "precio", "m2", "hab", "estado")
         self._tabla_agente = ttk.Treeview(izq, columns=cols, show="headings", height=18)
         encabezados = {
             "id": "ID",
+            "tipo": "Tipo",
             "direccion": "Dirección",
             "localidad": "Localidad",
             "precio": "Precio €",
@@ -161,7 +163,16 @@ class AppGrafica(tk.Tk):
             "hab": "Hab.",
             "estado": "Estado",
         }
-        anchos = {"id": 40, "direccion": 180, "localidad": 90, "precio": 90, "m2": 50, "hab": 45, "estado": 100}
+        anchos = {
+            "id": 40,
+            "tipo": 90,
+            "direccion": 160,
+            "localidad": 85,
+            "precio": 85,
+            "m2": 45,
+            "hab": 40,
+            "estado": 95,
+        }
         for col in cols:
             self._tabla_agente.heading(col, text=encabezados[col])
             self._tabla_agente.column(col, width=anchos[col], anchor=tk.CENTER if col != "direccion" else tk.W)
@@ -175,6 +186,7 @@ class AppGrafica(tk.Tk):
         )
         acciones = [
             ("Nueva vivienda", self._agente_nueva),
+            ("Importar datos…", self._agente_importar),
             ("Reservar", self._agente_reservar),
             ("Liberar", self._agente_liberar),
             ("Comprar (venta)", self._agente_comprar),
@@ -205,6 +217,7 @@ class AppGrafica(tk.Tk):
                 iid=str(casa.id),
                 values=(
                     casa.id,
+                    casa.tipo_vivienda.name,
                     casa.direccion,
                     casa.localidad,
                     f"{casa.precio:,.0f}",
@@ -238,6 +251,35 @@ class AppGrafica(tk.Tk):
             messagebox.showinfo("Alta", f"Vivienda creada (id={casa.id}).")
         except (ValueError, TypeError) as error:
             messagebox.showerror("Error", str(error))
+
+    def _agente_importar(self) -> None:
+        """Abre el explorador de archivos e importa viviendas desde el fichero elegido."""
+        ejemplos = Path(__file__).resolve().parents[2] / "data" / "ejemplos"
+        ruta = filedialog.askopenfilename(
+            parent=self,
+            title="Seleccionar fichero de viviendas a importar",
+            initialdir=str(ejemplos if ejemplos.is_dir() else Path.home()),
+            filetypes=[
+                ("CSV", "*.csv"),
+                ("Texto / TSV", "*.txt;*.tsv"),
+                ("JSON", "*.json"),
+                ("Excel", "*.xlsx;*.xlsm"),
+                ("Todos los archivos", "*.*"),
+            ],
+        )
+        if not ruta:
+            return
+        try:
+            resultado = self.app.importar_casas(ruta)
+        except (ValueError, TypeError, FileNotFoundError, ImportError, OSError) as error:
+            messagebox.showerror("Importación", str(error))
+            return
+        self._refrescar_tabla_agente()
+        messagebox.showinfo(
+            "Importación",
+            f"Fichero:\n{ruta}\n\n{resultado.resumen()}",
+        )
+
 
     def _dialogo_nueva_casa(self) -> dict[str, Any] | None:
         dialogo = tk.Toplevel(self)

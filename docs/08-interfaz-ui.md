@@ -71,6 +71,7 @@ La navegación **no usa rutas web**: se destruye el contenido de `_contenedor` y
 | Botón UI | Handler | Dominio / servicio |
 |---|---|---|
 | Nueva vivienda | `_agente_nueva` | `Casa(...)` + `app.agregar_casa` |
+| Importar datos… | `_agente_importar` | `filedialog.askopenfilename` → `app.importar_casas` |
 | Reservar | `_agente_reservar` | `casa.reservar` + `sincronizar` |
 | Liberar | `_agente_liberar` | `casa.liberar` + `sincronizar` |
 | Comprar (venta) | `_agente_comprar` | `casa.comprar` + `sincronizar` |
