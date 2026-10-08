@@ -127,7 +127,51 @@ Puntos clave:
 - UI: `filedialog` en Agente (`Importar datos…`)
 - CSV de tipologías: `data/ejemplos/casas_10_tipos.csv`
 
-## 11. Roadmap técnico sugerido
+## 11. Documentación HTML con Sphinx
+
+La carpeta `docs/` contiene Markdown fuente. Sphinx + MyST generan el sitio HTML (tema Read the Docs), incluyendo diagramas Mermaid.
+
+### Dependencias
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-docs.txt
+```
+
+Paquetes: `sphinx`, `sphinx-rtd-theme`, `myst-parser`, `sphinxcontrib-mermaid`.
+
+### Generar / limpiar
+
+```powershell
+# Desde la raíz del repo
+sphinx-build -b html docs docs/_build/html
+
+# Alternativa Windows
+docs\make.bat
+docs\make.bat clean
+```
+
+Salida: `docs/_build/html/index.html` (ignorada por git: `docs/_build/`).
+
+### Archivos de configuración
+
+| Archivo | Rol |
+|---|---|
+| `docs/conf.py` | Proyecto, idioma `es`, extensiones MyST/Mermaid, tema RTD |
+| `docs/index.md` | Raíz Sphinx (`toctree` a todos los capítulos) |
+| `docs/make.bat` | Atajo de build en Windows |
+| `requirements-docs.txt` | Dependencias solo de documentación |
+
+### Añadir un capítulo nuevo
+
+1. Crea `docs/10-mi-capitulo.md` con un título `# ...`.
+2. Añádelo al `toctree` de `docs/index.md`.
+3. Enlázalo en `docs/README.md` si quieres el índice Markdown.
+4. Regenera el HTML.
+
+La documentación “viva” para lectura rápida sigue siendo los `.md`; Sphinx es la vista HTML navegable.
+
+## 12. Roadmap técnico sugerido
 
 1. Autenticación real (usuario/contraseña, roles).
 2. API REST (FastAPI) reutilizando dominio.

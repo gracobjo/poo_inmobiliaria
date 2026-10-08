@@ -23,3 +23,16 @@ python -m unittest discover -s tests -v
 ```
 
 Requisito: **Python 3.14+** (biblioteca estándar: `tkinter`, `sqlite3`, `unittest`).
+
+## Documentación HTML (Sphinx)
+
+Estos Markdown se publican con Sphinx + MyST (tema Read the Docs):
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-docs.txt
+sphinx-build -b html docs docs/_build/html
+# o: docs\make.bat
+```
+
+Abre `docs/_build/html/index.html` en el navegador.

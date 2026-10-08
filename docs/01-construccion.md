@@ -63,6 +63,7 @@ La pantalla inicial elige perfil (Agente/Cliente). No hay login con contraseña:
 | BD | `sqlite3` |
 | Tests | `unittest` |
 | Diagramas (docs) | Mermaid en Markdown |
+| Docs HTML | Sphinx + MyST + tema Read the Docs |
 | Control de versiones | Git / GitHub |
 
 ## Flujo de arranque en tiempo de ejecución

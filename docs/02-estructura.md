@@ -52,7 +52,7 @@ poo_inmobiliaria/
 | `ejemplos/` | Demo | Scripts didácticos | Persistencia de producción |
 | `tests/` | Calidad | Pruebas del dominio | Dependencia de la UI |
 | `data/` | Datos | Fichero SQLite local | Código fuente |
-| `docs/` | Documentación | Manuales y UML | Lógica ejecutable |
+| `docs/` | Documentación | Manuales, UML y Sphinx (`conf.py`, `index.md`) | Lógica ejecutable; `_build/` es salida generada |
 
 ## Dependencias entre capas
 

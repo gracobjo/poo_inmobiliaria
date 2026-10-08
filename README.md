@@ -20,6 +20,17 @@ Toda la documentación de construcción, arquitectura, UML y manuales está en [
 | [UI](docs/08-interfaz-ui.md) | Pantallas, widgets y estilos |
 | [Importación de datos](docs/09-importacion-datos.md) | CSV, TXT, JSON, Excel, dict… |
 
+### Generar HTML con Sphinx
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-docs.txt
+sphinx-build -b html docs docs/_build/html
+```
+
+Salida: `docs/_build/html/index.html`
+
+
 ---
 
 ## Conceptos POO aplicados
