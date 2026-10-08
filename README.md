@@ -4,6 +4,21 @@ Proyecto educativo en **Python 3.14+** que modela la gestión de una inmobiliari
 
 El sistema permite dar de alta propiedades, venderlas (con impuesto AITP), alquilarlas (regla del 35 % de ingresos), aplicar mejoras (decoración y reforma con IVA), calcular rentabilidad y generar informes.
 
+## Documentación completa
+
+Toda la documentación de construcción, arquitectura, UML y manuales está en [`docs/`](docs/README.md):
+
+| Documento | Descripción |
+|---|---|
+| [Cómo se construyó](docs/01-construccion.md) | Fases y decisiones de diseño |
+| [Estructura](docs/02-estructura.md) | Carpetas y capas |
+| [Clases](docs/03-clases.md) | Catálogo de clases y métodos |
+| [Casos de uso](docs/04-casos-de-uso.md) | Agente, Cliente y reglas |
+| [Diagramas UML](docs/05-diagramas-uml.md) | Clases, secuencia, estados, ER |
+| [Manual desarrollador](docs/06-manual-desarrollador.md) | Extensión, tests, BD |
+| [Manual de usuario](docs/07-manual-usuario.md) | Guía paso a paso |
+| [UI](docs/08-interfaz-ui.md) | Pantallas, widgets y estilos |
+
 ---
 
 ## Conceptos POO aplicados
@@ -32,6 +47,7 @@ poo_inmobiliaria/
 ├── main.py                          # Punto de entrada (UI gráfica)
 ├── README.md
 ├── data/                            # SQLite (inmobiliaria.db)
+├── docs/                            # Documentación completa
 ├── ejemplos/
 │   └── demo_completa.py             # Demo por consola (--demo)
 ├── src/
