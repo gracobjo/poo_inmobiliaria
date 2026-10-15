@@ -87,6 +87,15 @@ class Database:
                 FOREIGN KEY (casa_id) REFERENCES casas(id) ON DELETE CASCADE,
                 FOREIGN KEY (cliente_id) REFERENCES clientes(id)
             );
+
+            CREATE TABLE IF NOT EXISTS reservas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                casa_id INTEGER NOT NULL UNIQUE,
+                cliente_id INTEGER NOT NULL,
+                fecha TEXT NOT NULL,
+                FOREIGN KEY (casa_id) REFERENCES casas(id) ON DELETE CASCADE,
+                FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+            );
             """
         )
         self._migrar_columnas()

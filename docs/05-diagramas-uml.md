@@ -25,6 +25,7 @@ classDiagram
     ALQUILER
     REFORMA
     DECORACION
+    RESERVA
     RESOLUCION
   }
 
@@ -81,6 +82,11 @@ classDiagram
     +observaciones: str
   }
 
+  class Reserva {
+    +cliente: Inquilino
+    +fecha: datetime
+  }
+
   class Casa {
     +total_casas: int$
     +impuesto_aitp: float$
@@ -91,11 +97,12 @@ classDiagram
     -_estado: EstadoCasa
     -_contrato: Contrato
     -_historial: TipoOperacion[*]
-    +reservar()
+    +reservar(cliente, fecha) Reserva
     +liberar()
     +comprar() float
     +alquilar(...) Contrato
     +resolver_contrato(...) ResolucionContrato
+    +reserva: Reserva
     +decorar(coste) float
     +reformar(coste) float
     +calcular_rentabilidad(renta) float
@@ -152,10 +159,12 @@ classDiagram
   Casa --> EstadoCasa
   Casa --> TipoOperacion
   Casa --> Contrato : 0..1
-  Casa ..> Inquilino : alquilar()
+  Casa --> Reserva : 0..1
+  Casa ..> Inquilino : alquilar() / reservar()
   Casa ..> CausaResolucion : resolver_contrato()
   Casa ..> IniciativaResolucion
   Contrato --> Inquilino
+  Reserva --> Inquilino
   Contrato ..> ResolucionContrato : preparar_resolucion()
   ResolucionContrato --> CausaResolucion
   ResolucionContrato --> IniciativaResolucion
@@ -303,6 +312,8 @@ flowchart TB
 erDiagram
   CASAS ||--o| CONTRATOS : tiene
   CLIENTES ||--o{ CONTRATOS : firma
+  CASAS ||--o| RESERVAS : bloquea
+  CLIENTES ||--o{ RESERVAS : interesa
   CASAS ||--o{ SOLICITUDES : recibe
   CLIENTES ||--o{ SOLICITUDES : envia
   CASAS ||--o{ RESOLUCIONES_CONTRATO : historial
@@ -359,6 +370,13 @@ erDiagram
     text observaciones
     real renta
     real fianza
+  }
+
+  RESERVAS {
+    int id PK
+    int casa_id FK
+    int cliente_id FK
+    text fecha
   }
 ```
 

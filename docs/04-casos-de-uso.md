@@ -102,12 +102,13 @@ En `ALQUILER`, si la renta comprometida del cliente ya alcanza el tope del 35 %,
 - **Detalle completo:** [09-importacion-datos.md](09-importacion-datos.md)
 
 ### UC09 · Reservar / Liberar
-- **Reservar:** solo desde `DISPONIBLE`.
-- **Liberar:** desde `RESERVADA` o `ALQUILADA` (limpia contrato sin expediente formal).
+- **Reservar:** solo desde `DISPONIBLE`; exige datos del cliente y registra fecha/hora.
+- **Efecto:** estado `RESERVADA`; `Reserva` persistida en SQLite.
+- **Liberar:** desde `RESERVADA` o `ALQUILADA` (limpia reserva/contrato sin expediente formal).
 
 ### UC10 · Registrar venta (`comprar`)
 - **Estados admitidos:** `DISPONIBLE` o `RESERVADA`.
-- **Efecto:** precio final = precio × (1 + AITP); estado `VENDIDA`.
+- **Efecto:** precio final = precio × (1 + AITP); estado `VENDIDA`; limpia reserva.
 
 ### UC11 · Registrar alquiler
 - **Flujo:** Datos del inquilino + renta + fianza.
@@ -120,7 +121,10 @@ En `ALQUILER`, si la renta comprometida del cliente ya alcanza el tope del 35 %,
 - **Finalizar reforma:** vuelve a `DISPONIBLE`.
 
 ### UC13 · Informe de cartera
-Muestra número de propiedades, valor total, desglose por estado y detalle.
+- **UI:** ventana con resumen (conteos + valor) y tarjetas agrupadas por estado.
+- **RESERVADA:** muestra cliente, teléfono, ingresos y fecha/hora de reserva.
+- **ALQUILADA:** muestra inquilino, renta y periodo.
+- Opción **Ver texto completo** con el informe textual clásico.
 
 ### UC14 · Gestionar solicitudes
 Lista solicitudes; puede marcar la primera pendiente como `ATENDIDA`.

@@ -405,10 +405,42 @@ class AppGrafica(tk.Tk):
         if casa is None:
             return
         try:
-            casa.reservar()
+            nombre = simpledialog.askstring("Reserva", "Nombre del cliente:", parent=self)
+            dni = simpledialog.askstring("Reserva", "DNI (8 dígitos + letra):", parent=self)
+            telefono = simpledialog.askstring("Reserva", "Teléfono:", parent=self)
+            ingresos = simpledialog.askfloat(
+                "Reserva",
+                "Ingresos mensuales €:",
+                parent=self,
+                minvalue=1,
+            )
+            if None in (nombre, dni, telefono, ingresos):
+                return
+            cliente = Inquilino(nombre, dni, telefono, float(ingresos))
+            # Si ya existe el cliente en BD, reutiliza sus datos guardados.
+            existente = self.app.obtener_cliente_por_dni(cliente.dni)
+            if existente is not None:
+                usar = messagebox.askyesno(
+                    "Cliente existente",
+                    f"Ya hay un cliente con DNI {existente.dni}:\n"
+                    f"{existente.nombre} · {existente.telefono} · "
+                    f"{existente.ingresos:,.0f} €/mes\n\n"
+                    "¿Usar esos datos para la reserva?",
+                    parent=self,
+                )
+                if usar:
+                    cliente = existente
+            reserva = casa.reservar(cliente)
+            self.app.guardar_cliente(cliente)
             self.app.sincronizar(casa)
             self._refrescar_tabla_agente()
-        except ValueError as error:
+            messagebox.showinfo(
+                "Reserva",
+                f"Vivienda #{casa.id} reservada para {reserva.cliente.nombre} "
+                f"({reserva.cliente.dni})\n"
+                f"Fecha: {reserva.fecha.strftime('%d/%m/%Y %H:%M')}",
+            )
+        except (ValueError, TypeError) as error:
             messagebox.showerror("Error", str(error))
 
     def _agente_liberar(self) -> None:
@@ -834,8 +866,8 @@ class AppGrafica(tk.Tk):
             messagebox.showerror("Error", str(error))
 
     def _agente_informe(self) -> None:
-        informe = self.app.gestion.generar_informe_cartera()
-        self._mostrar_texto("Informe de cartera", informe)
+        self.app.cargar()
+        self._mostrar_informe_cartera()
 
     def _agente_solicitudes(self) -> None:
         solicitudes = self.app.listar_solicitudes()
@@ -875,6 +907,158 @@ class AppGrafica(tk.Tk):
         texto.insert(tk.END, contenido)
         texto.configure(state=tk.DISABLED)
         return ventana
+
+    def _mostrar_informe_cartera(self) -> tk.Toplevel:
+        """Informe de cartera con resumen y tarjetas por vivienda."""
+        casas = self.app.gestion.propiedades
+        valor = self.app.gestion.calcular_valor_cartera()
+        por_estado: dict[str, list[Casa]] = {}
+        for casa in casas:
+            por_estado.setdefault(casa.estado.name, []).append(casa)
+
+        ventana = tk.Toplevel(self)
+        ventana.title("Informe de cartera")
+        ventana.geometry("780x620")
+        ventana.configure(bg=COLORES["fondo"])
+        ventana.transient(self)
+
+        marco = ttk.Frame(ventana, style="Fondo.TFrame", padding=16)
+        marco.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(marco, text="Informe de cartera", style="Titulo.TLabel").pack(anchor=tk.W)
+        resumen = (
+            f"{len(casas)} propiedades  ·  Valor total {self._fmt_eur(valor)}\n"
+            + "  ·  ".join(f"{estado}: {len(lista)}" for estado, lista in sorted(por_estado.items()))
+        )
+        ttk.Label(marco, text=resumen, style="Sub.TLabel", wraplength=720, justify=tk.LEFT).pack(
+            anchor=tk.W, pady=(4, 12)
+        )
+
+        canvas = tk.Canvas(marco, bg=COLORES["fondo"], highlightthickness=0)
+        scroll = ttk.Scrollbar(marco, orient=tk.VERTICAL, command=canvas.yview)
+        interior = ttk.Frame(canvas, style="Fondo.TFrame")
+        interior.bind(
+            "<Configure>",
+            lambda _e: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+        ventana_canvas = canvas.create_window((0, 0), window=interior, anchor=tk.NW)
+
+        def _ajustar(event: object) -> None:
+            canvas.itemconfigure(ventana_canvas, width=getattr(event, "width", 0))
+
+        def _rueda(event: object) -> None:
+            delta = int(getattr(event, "delta", 0))
+            if delta:
+                canvas.yview_scroll(-1 if delta > 0 else 1, "units")
+
+        canvas.bind("<Configure>", _ajustar)
+        canvas.bind("<Enter>", lambda _e: canvas.bind_all("<MouseWheel>", _rueda))
+        canvas.bind("<Leave>", lambda _e: canvas.unbind_all("<MouseWheel>"))
+        canvas.configure(yscrollcommand=scroll.set)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        orden = ["RESERVADA", "ALQUILADA", "DISPONIBLE", "EN_REFORMA", "VENDIDA"]
+        estados = sorted(
+            por_estado.keys(),
+            key=lambda e: orden.index(e) if e in orden else 99,
+        )
+        for estado in estados:
+            ttk.Label(
+                interior,
+                text=f"{estado} ({len(por_estado[estado])})",
+                style="Titulo.TLabel",
+            ).pack(anchor=tk.W, pady=(10, 4))
+            for casa in por_estado[estado]:
+                self._montar_tarjeta_informe(interior, casa)
+
+        botones = ttk.Frame(marco, style="Fondo.TFrame")
+        botones.pack(fill=tk.X, pady=(12, 0))
+        ttk.Button(
+            botones,
+            text="Ver texto completo",
+            command=lambda: self._mostrar_texto(
+                "Informe de cartera (texto)",
+                self.app.gestion.generar_informe_cartera(),
+            ),
+        ).pack(side=tk.LEFT)
+        ttk.Button(botones, text="Cerrar", command=ventana.destroy).pack(side=tk.RIGHT)
+        return ventana
+
+    def _montar_tarjeta_informe(self, padre: ttk.Frame, casa: Casa) -> None:
+        """Tarjeta de vivienda dentro del informe de cartera."""
+        tarjeta = ttk.LabelFrame(
+            padre,
+            text=f"  #{casa.id} · {casa.direccion} · {casa.localidad}  ",
+            style="Card.TLabelframe",
+            padding=10,
+        )
+        tarjeta.pack(fill=tk.X, pady=4, padx=2)
+
+        cabecera = ttk.Frame(tarjeta, style="Panel.TFrame")
+        cabecera.pack(fill=tk.X)
+        ttk.Label(
+            cabecera,
+            text=(
+                f"{casa.tipo_vivienda.name}  ·  {casa.metros_cuadrados:.0f} m²  ·  "
+                f"{casa.habitaciones} hab.  ·  {self._fmt_eur(casa.precio)}"
+            ),
+            style="CardMeta.TLabel",
+        ).pack(side=tk.LEFT)
+        estilo_estado = (
+            "Warn.TLabel"
+            if casa.estado == EstadoCasa.RESERVADA
+            else "Ok.TLabel"
+            if casa.estado == EstadoCasa.DISPONIBLE
+            else "CardVal.TLabel"
+        )
+        ttk.Label(cabecera, text=casa.estado.name, style=estilo_estado).pack(side=tk.RIGHT)
+
+        if casa.estado == EstadoCasa.RESERVADA:
+            detalle = ttk.Frame(tarjeta, style="Panel.TFrame")
+            detalle.pack(fill=tk.X, pady=(8, 0))
+            if casa.reserva is not None:
+                r = casa.reserva
+                filas = [
+                    ("Cliente", f"{r.cliente.nombre}  ·  {r.cliente.dni}"),
+                    ("Teléfono", r.cliente.telefono),
+                    ("Ingresos", self._fmt_eur(r.cliente.ingresos, mensuales=True)),
+                    ("Reservada el", r.fecha.strftime("%d/%m/%Y %H:%M")),
+                ]
+            else:
+                filas = [
+                    (
+                        "Aviso",
+                        "Reserva sin cliente/fecha (registrada antes de guardar estos datos).",
+                    )
+                ]
+            for i, (clave, valor) in enumerate(filas):
+                ttk.Label(detalle, text=clave, style="CardKey.TLabel").grid(
+                    row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=(0, 8), pady=2
+                )
+                ttk.Label(detalle, text=valor, style="CardVal.TLabel").grid(
+                    row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=(0, 16), pady=2
+                )
+        elif casa.estado == EstadoCasa.ALQUILADA and casa.contrato is not None:
+            c = casa.contrato
+            detalle = ttk.Frame(tarjeta, style="Panel.TFrame")
+            detalle.pack(fill=tk.X, pady=(8, 0))
+            filas = [
+                ("Inquilino", f"{c.inquilino.nombre}  ·  {c.inquilino.dni}"),
+                ("Renta", self._fmt_eur(c.renta, mensuales=True)),
+                (
+                    "Periodo",
+                    f"{self._fmt_fecha(c.fecha_inicio)} → {self._fmt_fecha(c.fecha_fin)}",
+                ),
+                ("Fianza", self._fmt_eur(c.fianza)),
+            ]
+            for i, (clave, valor) in enumerate(filas):
+                ttk.Label(detalle, text=clave, style="CardKey.TLabel").grid(
+                    row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=(0, 8), pady=2
+                )
+                ttk.Label(detalle, text=valor, style="CardVal.TLabel").grid(
+                    row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=(0, 16), pady=2
+                )
 
     # ------------------------------------------------------------------
     # Panel Cliente

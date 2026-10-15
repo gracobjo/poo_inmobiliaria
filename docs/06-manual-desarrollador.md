@@ -115,6 +115,8 @@ Buenas prácticas:
 | Error al solicitar visita | Perfil incompleto (nombre/DNI/tel/ingresos) |
 | Perfil no se recupera | Usar **Cargar perfil** con el DNI (no el teléfono) |
 | Filtro de precio vacío | ¿Intervalo en euros completos / miles? Ver `parsear_importe` |
+| Reserva sin cliente en informe | Reserva antigua: liberar y volver a reservar con datos |
+| Demo `ModuleNotFoundError: src` | Ejecutar desde raíz o usar el path de `demo_completa.py` |
 | Alquiler rechazado | Regla 35 % **acumulada** (`renta_comprometida`) |
 | Desistimiento rechazado | Menos de 6 meses desde `fecha_inicio` |
 | Necesidad propietario rechazada | Menos de 12 meses de contrato |

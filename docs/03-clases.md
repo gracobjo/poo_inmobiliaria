@@ -11,6 +11,7 @@
 | `ValidadoresInmobiliarios` | `utils/validadores.py` | Validaciones estáticas |
 | `Inquilino` | `modelos/inquilino.py` | Cliente / inquilino |
 | `Contrato` / `ResolucionContrato` | `modelos/contrato.py` | Contrato y baja formal |
+| `Reserva` | `modelos/reserva.py` | Reserva con cliente y fecha |
 | `Casa` | `modelos/casa.py` | Vivienda (núcleo) |
 | `GestionInmobiliaria` | `servicios/gestion_inmobiliaria.py` | Cartera en memoria |
 | `Database` | `persistencia/database.py` | Conexión y esquema SQLite |
@@ -24,7 +25,7 @@
 
 **EstadoCasa:** `DISPONIBLE`, `RESERVADA`, `VENDIDA`, `ALQUILADA`, `EN_REFORMA`
 
-**TipoOperacion:** `VENTA`, `ALQUILER`, `REFORMA`, `DECORACION`, `RESOLUCION`
+**TipoOperacion:** `VENTA`, `ALQUILER`, `REFORMA`, `DECORACION`, `RESERVA`, `RESOLUCION`
 
 **IniciativaResolucion:** `ARRENDADOR`, `ARRENDATARIO`, `AJENA`
 
@@ -78,6 +79,14 @@ Atributos encapsulados (properties): `inquilino`, `fecha_inicio`, `fecha_fin`, `
 
 ---
 
+## `Reserva`
+
+Dataclass inmutable: `cliente` (`Inquilino`) + `fecha` (`datetime`).
+
+Se asocia a una vivienda en estado `RESERVADA` y se limpia al liberar, comprar o alquilar.
+
+---
+
 ## `Casa`
 
 ### Atributos de clase
@@ -96,8 +105,8 @@ Atributos encapsulados (properties): `inquilino`, `fecha_inicio`, `fecha_fin`, `
 
 | Método | Efecto |
 |---|---|
-| `reservar()` | `DISPONIBLE` → `RESERVADA` |
-| `liberar()` | `RESERVADA`/`ALQUILADA` → `DISPONIBLE` |
+| `reservar(cliente, fecha=None)` | `DISPONIBLE` → `RESERVADA` + `Reserva` |
+| `liberar()` | `RESERVADA`/`ALQUILADA` → `DISPONIBLE` (limpia reserva/contrato) |
 | `comprar()` | Aplica AITP; estado `VENDIDA` |
 | `alquilar(..., renta_ya_comprometida=0)` | Crea `Contrato`; estado `ALQUILADA` (35 % acumulado) |
 | `resolver_contrato(causa, iniciativa, ...)` | Baja formal; estado `DISPONIBLE` + `RESOLUCION` |
@@ -119,6 +128,7 @@ Atributos encapsulados (properties): `inquilino`, `fecha_inicio`, `fecha_fin`, `
 
 - `restaurar_historial(ops)`
 - `asociar_contrato(contrato)`
+- `asociar_reserva(reserva)`
 
 ---
 
@@ -133,14 +143,14 @@ Lista privada `_propiedades`.
 | `listar_por_localidad(loc)` | Filtro por municipio |
 | `buscar_por_precio(min, max)` | Rango de precios |
 | `calcular_valor_cartera()` | Suma de precios |
-| `generar_informe_cartera()` | Texto resumen |
+| `generar_informe_cartera()` | Texto resumen (incluye cliente/fecha en reservas) |
 
 ---
 
 ## `Database`
 
 - Abre/crea fichero SQLite
-- Crea tablas (`casas`, `clientes`, `contratos`, `solicitudes`, `resoluciones_contrato`)
+- Crea tablas (`casas`, `clientes`, `contratos`, `solicitudes`, `resoluciones_contrato`, `reservas`)
 - Expone `conexion` y `cerrar()`
 
 ---
@@ -153,6 +163,7 @@ Traduce objetos ↔ filas:
 - Clientes: `guardar_cliente`, `obtener_cliente_por_dni`
 - Solicitudes: `crear_solicitud`, `listar_solicitudes`, `actualizar_estado_solicitud`
 - Contratos: sincronizados al guardar una casa alquilada
+- Reservas: sincronizadas al guardar una casa reservada
 - Resoluciones: `registrar_resolucion`, `listar_resoluciones`
 
 ---

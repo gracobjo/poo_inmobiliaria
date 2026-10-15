@@ -60,11 +60,18 @@ class TestCasa(unittest.TestCase):
             Casa("   ", "28013", 50, 100_000, 2)
 
     def test_reservar(self) -> None:
-        """Reservar pasa de DISPONIBLE a RESERVADA."""
-        self.casa.reservar()
+        """Reservar pasa de DISPONIBLE a RESERVADA y guarda cliente/fecha."""
+        from datetime import datetime
+
+        momento = datetime(2026, 10, 15, 9, 30)
+        reserva = self.casa.reservar(self.inquilino, fecha=momento)
         self.assertEqual(self.casa.estado, EstadoCasa.RESERVADA)
+        self.assertIsNotNone(self.casa.reserva)
+        self.assertEqual(reserva.cliente.dni, self.inquilino.dni)
+        self.assertEqual(reserva.fecha, momento)
+        self.assertIn(TipoOperacion.RESERVA, self.casa.historial_operaciones)
         with self.assertRaises(ValueError):
-            self.casa.reservar()
+            self.casa.reservar(self.inquilino)
 
     def test_comprar(self) -> None:
         """Comprar aplica AITP, cambia estado y registra la operación."""
@@ -77,10 +84,11 @@ class TestCasa(unittest.TestCase):
 
     def test_comprar_desde_reservada(self) -> None:
         """Una vivienda reservada también puede comprarse."""
-        self.casa.reservar()
+        self.casa.reservar(self.inquilino)
         precio_final = self.casa.comprar()
         self.assertAlmostEqual(precio_final, 220_000.0)
         self.assertEqual(self.casa.estado, EstadoCasa.VENDIDA)
+        self.assertIsNone(self.casa.reserva)
 
     def test_alquilar(self) -> None:
         """Alquilar crea contrato, cambia estado y valida la regla del 35 %."""
@@ -102,9 +110,10 @@ class TestCasa(unittest.TestCase):
 
     def test_liberar(self) -> None:
         """Liberar deshace reserva o alquiler y deja la casa disponible."""
-        self.casa.reservar()
+        self.casa.reservar(self.inquilino)
         self.casa.liberar()
         self.assertEqual(self.casa.estado, EstadoCasa.DISPONIBLE)
+        self.assertIsNone(self.casa.reserva)
 
         self.casa.alquilar(
             self.inquilino,

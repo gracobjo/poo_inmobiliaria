@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from src.modelos.contrato import Contrato, ResolucionContrato
 from src.modelos.inquilino import Inquilino
+from src.modelos.reserva import Reserva
 from src.utils.constantes import (
     CausaResolucion,
     EstadoCasa,
@@ -93,6 +94,7 @@ class Casa:
         self._localidad: str = localidad.strip()
         self._tipo_vivienda: TipoVivienda = tipo_vivienda
         self._contrato: Contrato | None = None
+        self._reserva: Reserva | None = None
         self._historial_operaciones: list[TipoOperacion] = []
 
         Casa.total_casas += 1
@@ -173,6 +175,11 @@ class Casa:
         return self._contrato
 
     @property
+    def reserva(self) -> Reserva | None:
+        """Reserva activa asociada, si existe."""
+        return self._reserva
+
+    @property
     def historial_operaciones(self) -> list[TipoOperacion]:
         """Copia del historial de operaciones realizadas."""
         return list(self._historial_operaciones)
@@ -186,17 +193,42 @@ class Casa:
     # Métodos de instancia
     # ------------------------------------------------------------------
 
-    def reservar(self) -> None:
-        """Marca la vivienda como reservada.
+    def reservar(
+        self,
+        cliente: Inquilino,
+        fecha: datetime | date | None = None,
+    ) -> Reserva:
+        """Marca la vivienda como reservada para un cliente.
+
+        Args:
+            cliente: Persona a favor de la cual se bloquea la vivienda.
+            fecha: Momento de la reserva (por defecto ahora).
+
+        Returns:
+            ``Reserva`` creada.
 
         Raises:
+            TypeError: Si ``cliente`` no es un ``Inquilino``.
             ValueError: Si la vivienda no está disponible.
         """
+        if not isinstance(cliente, Inquilino):
+            raise TypeError("El cliente de la reserva debe ser un Inquilino.")
         if self._estado != EstadoCasa.DISPONIBLE:
             raise ValueError(
                 f"No se puede reservar una vivienda en estado {self._estado.name}."
             )
+        momento: datetime
+        if fecha is None:
+            momento = datetime.now()
+        elif isinstance(fecha, datetime):
+            momento = fecha
+        else:
+            momento = datetime(fecha.year, fecha.month, fecha.day)
+        reserva = Reserva(cliente=cliente, fecha=momento)
+        self._reserva = reserva
         self._estado = EstadoCasa.RESERVADA
+        self._historial_operaciones.append(TipoOperacion.RESERVA)
+        return reserva
 
     def liberar(self) -> None:
         """Libera la vivienda (reserva o alquiler) y la deja disponible.
@@ -209,6 +241,7 @@ class Casa:
                 f"No se puede liberar una vivienda en estado {self._estado.name}."
             )
         self._contrato = None
+        self._reserva = None
         self._estado = EstadoCasa.DISPONIBLE
 
     def resolver_contrato(
@@ -247,6 +280,7 @@ class Casa:
             observaciones=observaciones,
         )
         self._contrato = None
+        self._reserva = None
         self._estado = EstadoCasa.DISPONIBLE
         self._historial_operaciones.append(TipoOperacion.RESOLUCION)
         return resolucion
@@ -286,6 +320,7 @@ class Casa:
         precio_final: float = self._precio * (1 + Casa.impuesto_aitp)
         self._estado = EstadoCasa.VENDIDA
         self._contrato = None
+        self._reserva = None
         self._historial_operaciones.append(TipoOperacion.VENTA)
         return precio_final
 
@@ -354,6 +389,7 @@ class Casa:
             renta=renta,
             fianza=fianza,
         )
+        self._reserva = None
         self._contrato = contrato
         self._estado = EstadoCasa.ALQUILADA
         self._historial_operaciones.append(TipoOperacion.ALQUILER)
@@ -425,6 +461,10 @@ class Casa:
     def asociar_contrato(self, contrato: Contrato | None) -> None:
         """Asocia o limpia el contrato cargado desde persistencia."""
         self._contrato = contrato
+
+    def asociar_reserva(self, reserva: Reserva | None) -> None:
+        """Asocia o limpia la reserva cargada desde persistencia."""
+        self._reserva = reserva
 
     # ------------------------------------------------------------------
     # Métodos de clase
@@ -570,11 +610,23 @@ class Casa:
 
     def __str__(self) -> str:
         localidad_txt: str = f", {self._localidad}" if self._localidad else ""
-        return (
+        base = (
             f"{self._direccion} ({self._codigo_postal}{localidad_txt}) — "
             f"{self._metros_cuadrados:.0f} m², {self._habitaciones} hab., "
             f"{self._precio:,.2f} € [{self._estado.name}]"
         )
+        if self._reserva is not None:
+            fecha = self._reserva.fecha.strftime("%d/%m/%Y %H:%M")
+            base += (
+                f" · reserva: {self._reserva.cliente.nombre} "
+                f"({self._reserva.cliente.dni}) el {fecha}"
+            )
+        elif self._contrato is not None:
+            base += (
+                f" · alquiler: {self._contrato.inquilino.nombre} "
+                f"({self._contrato.inquilino.dni})"
+            )
+        return base
 
 
 def _dias_en_mes(anio: int, mes: int) -> int:

@@ -8,6 +8,7 @@ from typing import Any
 from src.modelos.casa import Casa
 from src.modelos.contrato import Contrato, ResolucionContrato
 from src.modelos.inquilino import Inquilino
+from src.modelos.reserva import Reserva
 from src.persistencia.database import Database
 from src.utils.constantes import EstadoCasa, TipoOperacion, TipoVivienda
 
@@ -76,6 +77,7 @@ class RepositorioInmobiliario:
                 ),
             )
         self._sincronizar_contrato(casa)
+        self._sincronizar_reserva(casa)
         self._db.conexion.commit()
         return casa
 
@@ -108,6 +110,24 @@ class RepositorioInmobiliario:
                 contrato.renta,
                 contrato.fianza,
             ),
+        )
+
+    def _sincronizar_reserva(self, casa: Casa) -> None:
+        if casa.id is None:
+            return
+        self._db.conexion.execute(
+            "DELETE FROM reservas WHERE casa_id = ?", (casa.id,)
+        )
+        reserva = casa.reserva
+        if reserva is None:
+            return
+        cliente_id = self.guardar_cliente(reserva.cliente)
+        self._db.conexion.execute(
+            """
+            INSERT INTO reservas (casa_id, cliente_id, fecha)
+            VALUES (?, ?, ?)
+            """,
+            (casa.id, cliente_id, reserva.fecha.isoformat(timespec="seconds")),
         )
 
     def _fila_a_casa(self, fila: Any) -> Casa:
@@ -159,6 +179,29 @@ class RepositorioInmobiliario:
                 fianza=contrato_fila["fianza"],
             )
             casa.asociar_contrato(contrato)
+
+        reserva_fila = self._db.conexion.execute(
+            """
+            SELECT r.*, cl.nombre, cl.dni, cl.telefono, cl.ingresos
+            FROM reservas r
+            JOIN clientes cl ON cl.id = r.cliente_id
+            WHERE r.casa_id = ?
+            """,
+            (fila["id"],),
+        ).fetchone()
+        if reserva_fila is not None:
+            cliente = Inquilino(
+                nombre=reserva_fila["nombre"],
+                dni=reserva_fila["dni"],
+                telefono=reserva_fila["telefono"],
+                ingresos=reserva_fila["ingresos"],
+            )
+            casa.asociar_reserva(
+                Reserva(
+                    cliente=cliente,
+                    fecha=datetime.fromisoformat(reserva_fila["fecha"]),
+                )
+            )
         return casa
 
     # ------------------------------------------------------------------

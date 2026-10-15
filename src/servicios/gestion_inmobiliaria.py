@@ -117,7 +117,8 @@ class GestionInmobiliaria:
         """Genera un informe textual resumen de la cartera.
 
         Incluye número de propiedades, valor total, desglose por estado
-        y el listado breve de cada vivienda.
+        y el listado de cada vivienda. En reservas y alquileres añade
+        cliente y fecha cuando existen.
 
         Returns:
             Informe multilínea listo para imprimir o registrar.
@@ -137,8 +138,27 @@ class GestionInmobiliaria:
             lineas.append("Cartera vacía.")
 
         if self._propiedades:
+            lineas.append("")
             lineas.append("Detalle:")
             for indice, casa in enumerate(self._propiedades, start=1):
                 lineas.append(f"  {indice}. {casa}")
+                if casa.estado == EstadoCasa.RESERVADA:
+                    if casa.reserva is not None:
+                        fecha = casa.reserva.fecha.strftime("%d/%m/%Y %H:%M")
+                        lineas.append(
+                            f"       Cliente: {casa.reserva.cliente.nombre} "
+                            f"({casa.reserva.cliente.dni}) · Tel. {casa.reserva.cliente.telefono}"
+                        )
+                        lineas.append(f"       Reservada el: {fecha}")
+                    else:
+                        lineas.append(
+                            "       Cliente: (sin datos — reserva anterior a este registro)"
+                        )
+                elif casa.estado == EstadoCasa.ALQUILADA and casa.contrato is not None:
+                    c = casa.contrato
+                    lineas.append(
+                        f"       Inquilino: {c.inquilino.nombre} ({c.inquilino.dni}) · "
+                        f"renta {c.renta:,.0f} €/mes · {c.fecha_inicio} → {c.fecha_fin}"
+                    )
 
         return "\n".join(lineas)

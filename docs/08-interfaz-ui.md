@@ -72,7 +72,7 @@ La navegación **no usa rutas web**: se destruye el contenido de `_contenedor` y
 |---|---|---|
 | Nueva vivienda | `_agente_nueva` | `Casa(...)` + `app.agregar_casa` |
 | Importar datos… | `_agente_importar` | `filedialog.askopenfilename` → `app.importar_casas` |
-| Reservar | `_agente_reservar` | `casa.reservar` + `sincronizar` |
+| Reservar | `_agente_reservar` | Datos cliente + `casa.reservar` + `sincronizar` |
 | Liberar | `_agente_liberar` | `casa.liberar` + `sincronizar` |
 | Comprar (venta) | `_agente_comprar` | `casa.comprar` + `sincronizar` |
 | Alquilar… | `_agente_alquilar` | `Inquilino` + `renta_comprometida` + `casa.alquilar` |
@@ -83,14 +83,15 @@ La navegación **no usa rutas web**: se destruye el contenido de `_contenedor` y
 | Decorar… | `_agente_decorar` | `casa.decorar` |
 | Reformar… | `_agente_reformar` | `casa.reformar` |
 | Finalizar reforma | `_agente_fin_reforma` | `casa.finalizar_reforma` |
-| Ver informe cartera | `_agente_informe` | `gestion.generar_informe_cartera` |
+| Ver informe cartera | `_agente_informe` | `_mostrar_informe_cartera` |
 | Solicitudes de clientes | `_agente_solicitudes` | `app.listar_solicitudes` |
 
 ### Diálogos
 
 - **Nueva vivienda:** `Toplevel` modal con `StringVar` + validación numérica.
-- **Alquilar / costes:** `simpledialog.askstring` / `askfloat`.
-- **Informe / solicitudes / historial:** `Toplevel` con `Text` de solo lectura.
+- **Reservar / alquilar / costes:** `simpledialog.askstring` / `askfloat`.
+- **Informe de cartera:** tarjetas por estado (`_mostrar_informe_cartera`); texto completo opcional.
+- **Solicitudes / historial:** `Toplevel` con `Text` de solo lectura.
 - **Contratos:** tarjetas scrollables (`_mostrar_ventana_contratos`).
 - **Resolver contrato:** `Toplevel` con `Combobox` de causas LAU + observaciones.
 

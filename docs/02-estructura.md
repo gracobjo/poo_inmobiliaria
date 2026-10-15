@@ -19,7 +19,8 @@ poo_inmobiliaria/
 │   ├── modelos/                 # Dominio de negocio
 │   │   ├── casa.py
 │   │   ├── contrato.py
-│   │   └── inquilino.py
+│   │   ├── inquilino.py
+│   │   └── reserva.py
 │   ├── importacion/             # CSV/TXT/JSON/Excel/dict → modelos
 │   │   ├── fuentes.py
 │   │   ├── mapeo.py
@@ -39,6 +40,7 @@ poo_inmobiliaria/
     ├── test_casa.py
     ├── test_contrato.py
     ├── test_regla_35.py
+    ├── test_reserva.py
     ├── test_resolucion_contrato.py
     └── test_validadores_importe.py
 ```
@@ -90,3 +92,4 @@ Tablas:
 - `contratos` — alquiler vigente por casa
 - `solicitudes` — interés del cliente (visita/compra/alquiler)
 - `resoluciones_contrato` — historial de bajas formales de alquiler
+- `reservas` — reserva vigente por casa (cliente + fecha)

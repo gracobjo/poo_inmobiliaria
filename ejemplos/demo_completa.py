@@ -10,6 +10,13 @@ from __future__ import annotations
 
 import sys
 from datetime import date
+from pathlib import Path
+
+# Permite ejecutar este fichero directamente desde ``ejemplos/``:
+#   python demo_completa.py
+_RAIZ = Path(__file__).resolve().parents[1]
+if str(_RAIZ) not in sys.path:
+    sys.path.insert(0, str(_RAIZ))
 
 from src.modelos.casa import Casa
 from src.modelos.contrato import Contrato
@@ -95,13 +102,17 @@ def demostrar_creacion() -> tuple[Casa, Casa, Casa, Inquilino, GestionInmobiliar
     return casa_madrid, casa_barcelona, casa_sevilla, inquilino, gestion
 
 
-def demostrar_venta(casa: Casa) -> None:
+def demostrar_venta(casa: Casa, cliente: Inquilino) -> None:
     """Demuestra reserva y compra con impuesto AITP (atributo de clase)."""
     _separador("2. Venta (métodos de instancia + atributo de clase AITP)")
 
     print(f"Impuesto AITP actual: {Casa.impuesto_aitp:.0%}")
-    casa.reservar()
+    reserva = casa.reservar(cliente)
     print(f"Tras reservar -> estado: {casa.estado.name}")
+    print(
+        f"Reserva para {reserva.cliente.nombre} ({reserva.cliente.dni}) "
+        f"el {reserva.fecha.strftime('%d/%m/%Y %H:%M')}"
+    )
 
     Casa.cambiar_impuesto_aitp(0.08)
     print(f"AITP actualizado con método de clase: {Casa.impuesto_aitp:.0%}")
@@ -251,7 +262,7 @@ def main() -> None:
     print("Python 3.14+ - Clases, encapsulamiento y servicios")
 
     casa_madrid, casa_barcelona, casa_sevilla, inquilino, gestion = demostrar_creacion()
-    demostrar_venta(casa_barcelona)
+    demostrar_venta(casa_barcelona, inquilino)
     demostrar_alquiler(casa_sevilla, inquilino)
     demostrar_mejoras(casa_sevilla)
     demostrar_calculos(casa_madrid, casa_sevilla)

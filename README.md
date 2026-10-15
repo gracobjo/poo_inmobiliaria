@@ -2,7 +2,7 @@
 
 Proyecto educativo en **Python 3.14+** que modela la gestión de una inmobiliaria mediante **Programación Orientada a Objetos**: viviendas, inquilinos, contratos de alquiler y un servicio de cartera.
 
-El sistema permite dar de alta propiedades, venderlas (con impuesto AITP), alquilarlas (regla del 35 % de ingresos), aplicar mejoras (decoración y reforma con IVA), calcular rentabilidad y generar informes.
+El sistema permite dar de alta propiedades, reservarlas (con cliente y fecha), venderlas (con impuesto AITP), alquilarlas (regla del 35 % acumulada), resolver contratos (causas LAU), aplicar mejoras (decoración y reforma con IVA), calcular rentabilidad y generar informes visuales.
 
 ## Documentación completa
 
@@ -63,7 +63,7 @@ poo_inmobiliaria/
 ├── ejemplos/
 │   └── demo_completa.py             # Demo por consola (--demo)
 ├── src/
-│   ├── modelos/                     # Casa, Contrato, Inquilino
+│   ├── modelos/                     # Casa, Contrato, Inquilino, Reserva
 │   ├── persistencia/                # SQLite (Database + Repositorio)
 │   ├── servicios/                   # GestionInmobiliaria + AppInmobiliaria
 │   ├── ui/                          # Interfaz tkinter Agente/Cliente
@@ -72,6 +72,7 @@ poo_inmobiliaria/
     ├── test_casa.py
     ├── test_contrato.py
     ├── test_regla_35.py
+    ├── test_reserva.py
     ├── test_resolucion_contrato.py
     └── test_validadores_importe.py
 ```

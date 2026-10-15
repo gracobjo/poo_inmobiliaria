@@ -33,6 +33,7 @@ class TipoOperacion(Enum):
         ALQUILER: Cesión temporal de uso.
         REFORMA: Obra de mejora o rehabilitación.
         DECORACION: Servicio de interiorismo o ambientación.
+        RESERVA: Bloqueo temporal a favor de un cliente.
         RESOLUCION: Baja formal de un contrato de arrendamiento.
     """
 
@@ -40,6 +41,7 @@ class TipoOperacion(Enum):
     ALQUILER = auto()
     REFORMA = auto()
     DECORACION = auto()
+    RESERVA = auto()
     RESOLUCION = auto()
 
 

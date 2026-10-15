@@ -132,7 +132,7 @@ Guía detallada: [docs/09-importacion-datos.md](09-importacion-datos.md).
 
 | Botón | Cuándo usarlo |
 |---|---|
-| **Reservar** | Cliente interesado; bloquea la casa |
+| **Reservar** | Bloquea la casa para un cliente (pide nombre, DNI, teléfono e ingresos) |
 | **Liberar** | Cancela reserva o libera alquiler sin expediente formal |
 | **Comprar (venta)** | Cierra venta (aplica impuesto AITP) |
 | **Alquilar…** | Crea contrato (pide datos del inquilino) |
@@ -143,8 +143,18 @@ Guía detallada: [docs/09-importacion-datos.md](09-importacion-datos.md).
 | **Decorar…** | Suma un coste de decoración al valor |
 | **Reformar…** | Obra con IVA; pasa a EN_REFORMA |
 | **Finalizar reforma** | Vuelve a DISPONIBLE |
-| **Ver informe cartera** | Resumen textual |
+| **Ver informe cartera** | Tarjetas por estado (cliente/fecha en reservas; inquilino en alquileres) |
 | **Solicitudes de clientes** | Bandeja de visitas/interés |
+
+### 5.3 bis Reservar (paso a paso)
+
+1. Selecciona una vivienda **DISPONIBLE**.
+2. **Reservar**.
+3. Introduce los datos del cliente interesado.
+4. Si el DNI ya existe en SQLite, puedes reutilizar ese perfil.
+5. La casa pasa a **RESERVADA** y se guarda la fecha/hora de la reserva.
+
+En el informe de cartera verás el cliente y cuándo se reservó.
 
 ### 5.4 Alquilar (paso a paso)
 
@@ -211,4 +221,5 @@ No. **Liberar** es una liberación rápida (reserva o alquiler). **Resolver cont
 | Regla 35 % | La renta acumulada no debería superar el 35 % de los ingresos |
 | Renta comprometida | Suma de rentas de contratos vigentes del mismo DNI |
 | Resolución | Baja formal de un contrato con causa (LAU) |
+| Reserva | Bloqueo temporal de una vivienda a favor de un cliente (con fecha) |
 | Solicitud | Petición del cliente (visita/compra/alquiler) pendiente de agente |
