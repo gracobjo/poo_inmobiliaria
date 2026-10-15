@@ -11,7 +11,8 @@ from typing import Any
 from src.modelos.casa import Casa
 from src.modelos.inquilino import Inquilino
 from src.servicios.app_inmobiliaria import AppInmobiliaria
-from src.utils.constantes import EstadoCasa
+from src.utils.constantes import CausaResolucion, EstadoCasa, IniciativaResolucion
+from src.utils.validadores import ValidadoresInmobiliarios
 
 
 COLORES = {
@@ -68,6 +69,66 @@ class AppGrafica(tk.Tk):
             background=COLORES["panel"],
             foreground=COLORES["texto"],
             font=("Segoe UI", 10),
+        )
+        estilo.configure(
+            "Pista.TLabel",
+            background=COLORES["fondo"],
+            foreground="#5A6A6A",
+            font=("Segoe UI", 9),
+        )
+        estilo.configure(
+            "Card.TFrame",
+            background=COLORES["panel"],
+            relief="solid",
+            borderwidth=1,
+        )
+        estilo.configure(
+            "Card.TLabelframe",
+            background=COLORES["panel"],
+            foreground=COLORES["primario"],
+            font=("Segoe UI Semibold", 11),
+        )
+        estilo.configure(
+            "Card.TLabelframe.Label",
+            background=COLORES["panel"],
+            foreground=COLORES["primario"],
+            font=("Segoe UI Semibold", 11),
+        )
+        estilo.configure(
+            "CardTitle.TLabel",
+            background=COLORES["panel"],
+            foreground=COLORES["primario"],
+            font=("Segoe UI Semibold", 12),
+        )
+        estilo.configure(
+            "CardMeta.TLabel",
+            background=COLORES["panel"],
+            foreground="#5A6A6A",
+            font=("Segoe UI", 9),
+        )
+        estilo.configure(
+            "CardKey.TLabel",
+            background=COLORES["panel"],
+            foreground="#5A6A6A",
+            font=("Segoe UI", 9),
+        )
+        estilo.configure(
+            "CardVal.TLabel",
+            background=COLORES["panel"],
+            foreground=COLORES["texto"],
+            font=("Segoe UI", 10),
+        )
+        estilo.configure(
+            "Ok.TLabel",
+            background=COLORES["panel"],
+            foreground=COLORES["exito"],
+            font=("Segoe UI Semibold", 10),
+        )
+        estilo.configure(
+            "Warn.TLabel",
+            background=COLORES["panel"],
+            foreground=COLORES["acento"],
+            font=("Segoe UI Semibold", 10),
         )
         estilo.configure(
             "Primario.TButton",
@@ -191,6 +252,10 @@ class AppGrafica(tk.Tk):
             ("Liberar", self._agente_liberar),
             ("Comprar (venta)", self._agente_comprar),
             ("Alquilar…", self._agente_alquilar),
+            ("Ver contrato", self._agente_ver_contrato),
+            ("Listar contratos", self._agente_listar_contratos),
+            ("Resolver contrato…", self._agente_resolver_contrato),
+            ("Historial resoluciones", self._agente_historial_resoluciones),
             ("Decorar…", self._agente_decorar),
             ("Reformar…", self._agente_reformar),
             ("Finalizar reforma", self._agente_fin_reforma),
@@ -382,19 +447,350 @@ class AppGrafica(tk.Tk):
             fianza = simpledialog.askfloat("Contrato", "Fianza €:", parent=self, minvalue=0)
             if None in (nombre, dni, telefono, ingresos, renta, fianza):
                 return
+            self.app.cargar()
             inquilino = Inquilino(nombre, dni, telefono, float(ingresos))
+            comprometida = self.app.renta_comprometida(inquilino.dni)
+            disponible = max(inquilino.tope_renta - comprometida, 0.0)
+            if comprometida > 0:
+                seguir = messagebox.askokcancel(
+                    "Regla del 35%",
+                    f"El inquilino ya tiene {self._fmt_eur(comprometida, mensuales=True)} "
+                    f"en contratos vigentes.\n"
+                    f"Tope 35%: {self._fmt_eur(inquilino.tope_renta, mensuales=True)}\n"
+                    f"Margen restante: {self._fmt_eur(disponible, mensuales=True)}\n\n"
+                    "¿Continuar con este alquiler?",
+                )
+                if not seguir:
+                    return
             casa.alquilar(
                 inquilino,
                 renta=float(renta),
                 fianza=float(fianza),
                 fecha_inicio=date.today(),
                 meses=12,
+                renta_ya_comprometida=comprometida,
             )
             self.app.sincronizar(casa)
             self._refrescar_tabla_agente()
             messagebox.showinfo("Alquiler", "Contrato creado y guardado en SQLite.")
         except (ValueError, TypeError) as error:
             messagebox.showerror("Error", str(error))
+
+    @staticmethod
+    def _fmt_fecha(valor: date) -> str:
+        return valor.strftime("%d/%m/%Y")
+
+    @staticmethod
+    def _fmt_eur(valor: float, *, mensuales: bool = False) -> str:
+        texto = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"{texto} €/mes" if mensuales else f"{texto} €"
+
+    def _mostrar_ventana_contratos(
+        self,
+        titulo: str,
+        casas: list[Casa],
+        *,
+        subtitulo: str = "",
+        iniciativa_baja: IniciativaResolucion | None = None,
+        al_resolver=None,
+    ) -> tk.Toplevel:
+        """Ventana con tarjetas de contratos (mejor UX que texto plano)."""
+        ventana = tk.Toplevel(self)
+        ventana.title(titulo)
+        ventana.geometry("740x580")
+        ventana.configure(bg=COLORES["fondo"])
+        ventana.transient(self)
+
+        marco = ttk.Frame(ventana, style="Fondo.TFrame", padding=16)
+        marco.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(marco, text=titulo, style="Titulo.TLabel").pack(anchor=tk.W)
+        texto_sub = subtitulo or f"{len(casas)} contrato{'s' if len(casas) != 1 else ''}"
+        ttk.Label(marco, text=texto_sub, style="Sub.TLabel", wraplength=680, justify=tk.LEFT).pack(
+            anchor=tk.W, pady=(2, 10)
+        )
+
+        canvas = tk.Canvas(marco, bg=COLORES["fondo"], highlightthickness=0)
+        scroll = ttk.Scrollbar(marco, orient=tk.VERTICAL, command=canvas.yview)
+        interior = ttk.Frame(canvas, style="Fondo.TFrame")
+        interior.bind(
+            "<Configure>",
+            lambda _e: canvas.configure(scrollregion=canvas.bbox("all")),
+        )
+        canvas_ventana = canvas.create_window((0, 0), window=interior, anchor=tk.NW)
+
+        def _ajustar_ancho(event: object) -> None:
+            canvas.itemconfigure(canvas_ventana, width=getattr(event, "width", 0))
+
+        def _rueda(event: object) -> None:
+            delta = int(getattr(event, "delta", 0))
+            if delta:
+                canvas.yview_scroll(-1 if delta > 0 else 1, "units")
+
+        canvas.bind("<Configure>", _ajustar_ancho)
+        canvas.bind("<Enter>", lambda _e: canvas.bind_all("<MouseWheel>", _rueda))
+        canvas.bind("<Leave>", lambda _e: canvas.unbind_all("<MouseWheel>"))
+        canvas.configure(yscrollcommand=scroll.set)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        for casa in casas:
+            self._montar_tarjeta_contrato(
+                interior,
+                casa,
+                iniciativa_baja=iniciativa_baja,
+                ventana_padre=ventana,
+                al_resolver=al_resolver,
+            )
+
+        ttk.Button(marco, text="Cerrar", command=ventana.destroy).pack(pady=(12, 0))
+        return ventana
+
+    def _montar_tarjeta_contrato(
+        self,
+        padre: ttk.Frame,
+        casa: Casa,
+        *,
+        iniciativa_baja: IniciativaResolucion | None = None,
+        ventana_padre: tk.Toplevel | None = None,
+        al_resolver=None,
+    ) -> None:
+        """Dibuja una tarjeta visual para el contrato de ``casa``."""
+        contrato = casa.contrato
+        if contrato is None:
+            return
+
+        tarjeta = ttk.LabelFrame(
+            padre,
+            text=f"  {casa.direccion} · {casa.localidad}  ",
+            style="Card.TLabelframe",
+            padding=12,
+        )
+        tarjeta.pack(fill=tk.X, pady=6, padx=2)
+
+        cabecera = ttk.Frame(tarjeta, style="Panel.TFrame")
+        cabecera.pack(fill=tk.X)
+        ttk.Label(
+            cabecera,
+            text=f"Vivienda #{casa.id}  ·  {casa.estado.name}",
+            style="CardMeta.TLabel",
+        ).pack(side=tk.LEFT)
+        vigente = contrato.esta_vigente()
+        ttk.Label(
+            cabecera,
+            text="VIGENTE" if vigente else "NO VIGENTE",
+            style="Ok.TLabel" if vigente else "Warn.TLabel",
+        ).pack(side=tk.RIGHT)
+
+        cuerpo = ttk.Frame(tarjeta, style="Panel.TFrame")
+        cuerpo.pack(fill=tk.X, pady=(10, 0))
+        cuerpo.columnconfigure(1, weight=1)
+        cuerpo.columnconfigure(3, weight=1)
+
+        filas = [
+            ("Periodo", f"{self._fmt_fecha(contrato.fecha_inicio)}  →  {self._fmt_fecha(contrato.fecha_fin)}"),
+            ("Renta", self._fmt_eur(contrato.renta, mensuales=True)),
+            ("Fianza", self._fmt_eur(contrato.fianza)),
+            ("Pagado estimado", self._fmt_eur(contrato.calcular_total_pagado())),
+            ("Inquilino", f"{contrato.inquilino.nombre}  ·  {contrato.inquilino.dni}"),
+            (
+                "Contacto",
+                f"{contrato.inquilino.telefono}  ·  {self._fmt_eur(contrato.inquilino.ingresos, mensuales=True)}",
+            ),
+        ]
+        for i, (clave, valor) in enumerate(filas):
+            fila, col = divmod(i, 2)
+            ttk.Label(cuerpo, text=clave, style="CardKey.TLabel").grid(
+                row=fila, column=col * 2, sticky=tk.W, padx=(0, 8), pady=3
+            )
+            ttk.Label(cuerpo, text=valor, style="CardVal.TLabel").grid(
+                row=fila, column=col * 2 + 1, sticky=tk.W, padx=(0, 16), pady=3
+            )
+
+        if iniciativa_baja is not None and casa.id is not None:
+            acciones = ttk.Frame(tarjeta, style="Panel.TFrame")
+            acciones.pack(fill=tk.X, pady=(12, 0))
+            ttk.Button(
+                acciones,
+                text="Dar de baja el contrato…",
+                style="Tool.TButton",
+                command=lambda c=casa: self._dialogo_resolver_contrato(
+                    c,
+                    iniciativa_baja,
+                    ventana_padre=ventana_padre,
+                    al_resolver=al_resolver,
+                ),
+            ).pack(side=tk.RIGHT)
+
+    def _dialogo_resolver_contrato(
+        self,
+        casa: Casa,
+        iniciativa: IniciativaResolucion,
+        *,
+        ventana_padre: tk.Toplevel | None = None,
+        al_resolver=None,
+    ) -> None:
+        """Diálogo para elegir causa LAU y confirmar la baja del contrato."""
+        if casa.contrato is None or casa.id is None:
+            messagebox.showinfo("Resolver contrato", "Esta vivienda no tiene contrato activo.")
+            return
+
+        dialogo = tk.Toplevel(self)
+        dialogo.title(f"Resolver contrato · vivienda #{casa.id}")
+        dialogo.geometry("640x420")
+        dialogo.configure(bg=COLORES["fondo"])
+        dialogo.transient(self)
+        dialogo.grab_set()
+
+        marco = ttk.Frame(dialogo, style="Fondo.TFrame", padding=16)
+        marco.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(marco, text="Baja de contrato", style="Titulo.TLabel").pack(anchor=tk.W)
+        ttk.Label(
+            marco,
+            text=(
+                f"{casa.direccion} ({casa.localidad}) · "
+                f"Iniciativa: {iniciativa.etiqueta}"
+            ),
+            style="Sub.TLabel",
+            wraplength=600,
+        ).pack(anchor=tk.W, pady=(4, 12))
+
+        causas = CausaResolucion.para_iniciativa(iniciativa)
+        mapa = {c.descripcion: c for c in causas}
+        var_causa = tk.StringVar(value=causas[0].descripcion)
+        var_obs = tk.StringVar()
+
+        ttk.Label(marco, text="Causa de resolución", style="Sub.TLabel").pack(anchor=tk.W)
+        combo = ttk.Combobox(
+            marco,
+            textvariable=var_causa,
+            values=list(mapa.keys()),
+            state="readonly",
+            width=80,
+        )
+        combo.pack(fill=tk.X, pady=(4, 10))
+
+        ttk.Label(marco, text="Observaciones (opcional)", style="Sub.TLabel").pack(anchor=tk.W)
+        entrada_obs = ttk.Entry(marco, textvariable=var_obs)
+        entrada_obs.pack(fill=tk.X, pady=(4, 16))
+
+        def confirmar() -> None:
+            causa = mapa[var_causa.get()]
+            if not messagebox.askyesno(
+                "Confirmar baja",
+                "¿Confirmas la resolución del contrato?\n\n"
+                f"Causa: {causa.descripcion}\n"
+                "La vivienda pasará a DISPONIBLE.",
+                parent=dialogo,
+            ):
+                return
+            try:
+                resolucion = self.app.resolver_contrato(
+                    casa.id,
+                    causa,
+                    iniciativa,
+                    observaciones=var_obs.get(),
+                )
+            except (ValueError, TypeError) as error:
+                messagebox.showerror("Resolver contrato", str(error), parent=dialogo)
+                return
+            messagebox.showinfo(
+                "Contrato resuelto",
+                f"Baja registrada el {self._fmt_fecha(resolucion.fecha)}.\n"
+                f"{resolucion.causa.descripcion}",
+                parent=dialogo,
+            )
+            dialogo.destroy()
+            if ventana_padre is not None and ventana_padre.winfo_exists():
+                ventana_padre.destroy()
+            if al_resolver is not None:
+                al_resolver()
+            elif hasattr(self, "_tabla_agente"):
+                try:
+                    self._refrescar_tabla_agente()
+                except tk.TclError:
+                    pass
+
+        botones = ttk.Frame(marco, style="Fondo.TFrame")
+        botones.pack(fill=tk.X)
+        ttk.Button(botones, text="Cancelar", command=dialogo.destroy).pack(side=tk.RIGHT)
+        ttk.Button(botones, text="Confirmar baja", command=confirmar).pack(side=tk.RIGHT, padx=8)
+
+    def _agente_ver_contrato(self) -> None:
+        casa = self._casa_seleccionada_agente()
+        if casa is None:
+            return
+        if casa.contrato is None:
+            messagebox.showinfo(
+                "Contrato",
+                f"La vivienda #{casa.id} no tiene contrato de arrendamiento.\n"
+                "Selecciona una vivienda en estado ALQUILADA.",
+            )
+            return
+        self._mostrar_ventana_contratos(
+            f"Contrato · vivienda #{casa.id}",
+            [casa],
+            subtitulo=f"{casa.direccion} ({casa.localidad})",
+            iniciativa_baja=IniciativaResolucion.ARRENDADOR,
+            al_resolver=self._refrescar_tabla_agente,
+        )
+
+    def _agente_listar_contratos(self) -> None:
+        self.app.cargar()
+        contratos = self.app.listar_contratos()
+        if not contratos:
+            messagebox.showinfo("Contratos", "No hay contratos de arrendamiento registrados.")
+            return
+        casas = [casa for casa, _contrato in contratos]
+        self._mostrar_ventana_contratos(
+            "Contratos de arrendamiento",
+            casas,
+            subtitulo=f"{len(casas)} alquileres en cartera",
+            iniciativa_baja=IniciativaResolucion.ARRENDADOR,
+            al_resolver=self._refrescar_tabla_agente,
+        )
+
+    def _agente_resolver_contrato(self) -> None:
+        casa = self._casa_seleccionada_agente()
+        if casa is None:
+            return
+        if casa.contrato is None:
+            messagebox.showinfo(
+                "Resolver contrato",
+                "Selecciona una vivienda ALQUILADA con contrato vigente.",
+            )
+            return
+        self._dialogo_resolver_contrato(
+            casa,
+            IniciativaResolucion.ARRENDADOR,
+            al_resolver=self._refrescar_tabla_agente,
+        )
+
+    def _agente_historial_resoluciones(self) -> None:
+        filas = self.app.listar_resoluciones()
+        if not filas:
+            messagebox.showinfo("Historial", "No hay resoluciones de contrato registradas.")
+            return
+        lineas = [f"Historial de bajas ({len(filas)}):\n"]
+        for r in filas:
+            try:
+                causa = CausaResolucion[r["causa"]].descripcion
+            except KeyError:
+                causa = r["causa"]
+            try:
+                iniciativa = IniciativaResolucion[r["iniciativa"]].etiqueta
+            except KeyError:
+                iniciativa = r["iniciativa"]
+            fecha = date.fromisoformat(r["fecha_resolucion"])
+            lineas.append(
+                f"#{r['id']} · {self._fmt_fecha(fecha)} · vivienda #{r['casa_id']} "
+                f"{r['direccion']} ({r['localidad']})\n"
+                f"  {r['nombre']} ({r['dni']}) · {iniciativa}\n"
+                f"  {causa}\n"
+                f"  Obs.: {r['observaciones'] or '—'}\n"
+            )
+        self._mostrar_texto("Historial de resoluciones", "\n".join(lineas))
 
     def _agente_decorar(self) -> None:
         casa = self._casa_seleccionada_agente()
@@ -518,8 +914,13 @@ class AppGrafica(tk.Tk):
             ttk.Entry(sesion, textvariable=var, width=16).grid(
                 row=0, column=i * 2 + 1, padx=4, pady=4
             )
-        ttk.Button(sesion, text="Guardar perfil", command=self._cliente_guardar_perfil).grid(
-            row=0, column=8, padx=8
+        botones_perfil = ttk.Frame(sesion)
+        botones_perfil.grid(row=0, column=8, padx=8)
+        ttk.Button(botones_perfil, text="Cargar perfil", command=self._cliente_cargar_perfil).pack(
+            side=tk.LEFT, padx=(0, 4)
+        )
+        ttk.Button(botones_perfil, text="Guardar perfil", command=self._cliente_guardar_perfil).pack(
+            side=tk.LEFT
         )
 
         filtros = ttk.Frame(raiz, style="Fondo.TFrame")
@@ -531,13 +932,18 @@ class AppGrafica(tk.Tk):
         ttk.Entry(filtros, textvariable=self._filtro_localidad, width=14).pack(
             side=tk.LEFT, padx=6
         )
-        ttk.Label(filtros, text="Precio min").pack(side=tk.LEFT)
-        ttk.Entry(filtros, textvariable=self._filtro_min, width=10).pack(side=tk.LEFT, padx=6)
-        ttk.Label(filtros, text="Precio max").pack(side=tk.LEFT)
-        ttk.Entry(filtros, textvariable=self._filtro_max, width=10).pack(side=tk.LEFT, padx=6)
+        ttk.Label(filtros, text="Precio min (€)").pack(side=tk.LEFT)
+        ttk.Entry(filtros, textvariable=self._filtro_min, width=12).pack(side=tk.LEFT, padx=6)
+        ttk.Label(filtros, text="Precio max (€)").pack(side=tk.LEFT)
+        ttk.Entry(filtros, textvariable=self._filtro_max, width=12).pack(side=tk.LEFT, padx=6)
         ttk.Button(filtros, text="Buscar disponibles", command=self._refrescar_tabla_cliente).pack(
             side=tk.LEFT, padx=8
         )
+        ttk.Label(
+            filtros,
+            text="ej. 250000, 250.000 o 250k",
+            style="Pista.TLabel",
+        ).pack(side=tk.LEFT, padx=(4, 0))
 
         cols = ("id", "direccion", "localidad", "precio", "m2", "hab", "eur_m2")
         self._tabla_cliente = ttk.Treeview(raiz, columns=cols, show="headings", height=14)
@@ -571,11 +977,41 @@ class AppGrafica(tk.Tk):
         ttk.Button(
             acciones, text="Comprobar regla 35%", command=self._cliente_elegibilidad
         ).pack(side=tk.LEFT, padx=4)
+        ttk.Button(acciones, text="Mis contratos", command=self._cliente_mis_contratos).pack(
+            side=tk.LEFT, padx=4
+        )
 
         self._refrescar_tabla_cliente()
 
+    def _cliente_cargar_perfil(self) -> None:
+        """Carga desde SQLite el cliente cuyo DNI está en el formulario."""
+        dni = self._cli_dni.get().strip()
+        if not dni:
+            messagebox.showinfo(
+                "Cargar perfil",
+                "Escribe tu DNI (8 dígitos + letra, ej. 12345678Z) y pulsa Cargar perfil.",
+            )
+            return
+        cliente = self.app.obtener_cliente_por_dni(dni)
+        if cliente is None:
+            messagebox.showwarning(
+                "Cargar perfil",
+                f"No hay ningún cliente guardado con DNI {dni.upper()}.\n"
+                "Completa el formulario y pulsa Guardar perfil.",
+            )
+            return
+        self._cliente_sesion = cliente
+        self._cli_nombre.set(cliente.nombre)
+        self._cli_dni.set(cliente.dni)
+        self._cli_tel.set(cliente.telefono)
+        ingresos = cliente.ingresos
+        self._cli_ingresos.set(
+            str(int(ingresos) if ingresos == int(ingresos) else ingresos)
+        )
+        messagebox.showinfo("Cargar perfil", f"Perfil cargado: {cliente}")
+
     def _cliente_guardar_perfil(self, *, silencioso: bool = False) -> bool:
-        """Valida y guarda el perfil del cliente desde el formulario.
+        """Valida, crea la sesión y persiste el perfil del cliente en SQLite.
 
         Args:
             silencioso: Si es ``True``, no muestra el aviso de éxito.
@@ -598,10 +1034,11 @@ class AppGrafica(tk.Tk):
         if not ingresos_txt:
             faltantes.append("Ingresos €/mes")
         if faltantes:
-            messagebox.showwarning(
-                "Perfil incompleto",
-                "Antes de continuar, completa tu perfil:\n- " + "\n- ".join(faltantes),
-            )
+            if not silencioso:
+                messagebox.showwarning(
+                    "Perfil incompleto",
+                    "Antes de continuar, completa tu perfil:\n- " + "\n- ".join(faltantes),
+                )
             return False
 
         try:
@@ -620,13 +1057,62 @@ class AppGrafica(tk.Tk):
                 telefono=telefono,
                 ingresos=ingresos,
             )
+            self.app.guardar_cliente(self._cliente_sesion)
         except (ValueError, TypeError) as error:
             messagebox.showerror("Perfil", str(error))
             return False
 
         if not silencioso:
-            messagebox.showinfo("Perfil", f"Perfil listo: {self._cliente_sesion}")
+            messagebox.showinfo(
+                "Perfil",
+                f"Perfil guardado en SQLite: {self._cliente_sesion}\n"
+                "Podrás recuperarlo con Cargar perfil usando tu DNI.",
+            )
         return True
+
+    def _cliente_mis_contratos(self) -> None:
+        """Muestra los contratos de arrendamiento del cliente de sesión."""
+        cliente = self._exigir_cliente()
+        if cliente is None:
+            return
+        self.app.cargar()
+        propios = [
+            (casa, contrato)
+            for casa, contrato in self.app.listar_contratos()
+            if contrato.inquilino.dni == cliente.dni
+        ]
+        if not propios:
+            messagebox.showinfo(
+                "Mis contratos",
+                f"No hay contratos de arrendamiento para {cliente.dni}.",
+            )
+            return
+        casas = [casa for casa, _contrato in propios]
+        comprometida = self.app.renta_comprometida(cliente.dni)
+        tope = cliente.tope_renta
+        margen = max(tope - comprometida, 0.0)
+        aviso = (
+            f"{cliente.nombre} · DNI {cliente.dni}\n"
+            f"Rentas vigentes: {self._fmt_eur(comprometida, mensuales=True)}  ·  "
+            f"Tope 35%: {self._fmt_eur(tope, mensuales=True)}  ·  "
+            f"Margen: {self._fmt_eur(margen, mensuales=True)}"
+        )
+        if comprometida > tope:
+            aviso += (
+                "\n⚠ Las rentas actuales superan el 35% de tus ingresos; "
+                "no se admitirán nuevos alquileres."
+            )
+
+        def _tras_baja() -> None:
+            self._cliente_mis_contratos()
+
+        self._mostrar_ventana_contratos(
+            "Mis contratos",
+            casas,
+            subtitulo=aviso,
+            iniciativa_baja=IniciativaResolucion.ARRENDATARIO,
+            al_resolver=_tras_baja,
+        )
 
     def _exigir_cliente(self) -> Inquilino | None:
         """Devuelve el cliente de sesión, intentando leer el formulario si hace falta."""
@@ -634,6 +1120,24 @@ class AppGrafica(tk.Tk):
         if not self._cliente_guardar_perfil(silencioso=True):
             return None
         return self._cliente_sesion
+
+    @staticmethod
+    def _parsear_filtro_precio(texto: str) -> float | None:
+        """Interpreta el texto del filtro de precio en euros.
+
+        Acepta formatos ES/EN y el sufijo ``k``. Las cantidades enteras
+        menores de 1.000 se tratan como miles de euros (p. ej. ``250`` →
+        ``250_000``), que es el uso habitual al buscar vivienda.
+        """
+        if not texto.strip():
+            return None
+        valor = ValidadoresInmobiliarios.parsear_importe(texto)
+        if valor < 0:
+            raise ValueError("El precio no puede ser negativo.")
+        # 250 → 250000; 250.000 / 250k ya llegan como euros completos.
+        if 0 < valor < 1000 and valor == int(valor):
+            valor *= 1000
+        return valor
 
     def _refrescar_tabla_cliente(self) -> None:
         self.app.cargar()
@@ -645,10 +1149,17 @@ class AppGrafica(tk.Tk):
         if loc:
             casas = [c for c in casas if c.localidad.casefold() == loc.casefold()]
         try:
-            pmin = float(self._filtro_min.get()) if self._filtro_min.get().strip() else None
-            pmax = float(self._filtro_max.get()) if self._filtro_max.get().strip() else None
-        except ValueError:
-            messagebox.showerror("Filtro", "Precio mínimo/máximo no válidos.")
+            pmin = self._parsear_filtro_precio(self._filtro_min.get())
+            pmax = self._parsear_filtro_precio(self._filtro_max.get())
+        except (ValueError, TypeError):
+            messagebox.showerror(
+                "Filtro",
+                "Precio mínimo/máximo no válidos.\n"
+                "Usa euros completos (250000), formato ES (250.000) o miles (250 / 250k).",
+            )
+            return
+        if pmin is not None and pmax is not None and pmin > pmax:
+            messagebox.showerror("Filtro", "El precio mínimo no puede ser mayor que el máximo.")
             return
         if pmin is not None:
             casas = [c for c in casas if c.precio >= pmin]
@@ -699,6 +1210,18 @@ class AppGrafica(tk.Tk):
         if casa.estado != EstadoCasa.DISPONIBLE:
             messagebox.showwarning("No disponible", "Solo puedes solicitar viviendas disponibles.")
             return
+        if tipo == "ALQUILER":
+            self.app.cargar()
+            comprometida = self.app.renta_comprometida(cliente.dni)
+            if comprometida >= cliente.tope_renta:
+                messagebox.showwarning(
+                    "Regla del 35%",
+                    "No puedes solicitar más alquileres: tus rentas vigentes "
+                    f"({self._fmt_eur(comprometida, mensuales=True)}) ya alcanzan o "
+                    f"superan el tope del 35% "
+                    f"({self._fmt_eur(cliente.tope_renta, mensuales=True)}).",
+                )
+                return
         mensaje = simpledialog.askstring(
             "Mensaje",
             "Cuéntanos tu interés (opcional):",
@@ -717,26 +1240,44 @@ class AppGrafica(tk.Tk):
         cliente = self._exigir_cliente()
         if cliente is None:
             return
+        self.app.cargar()
+        comprometida = self.app.renta_comprometida(cliente.dni)
+        tope = cliente.tope_renta
+        margen = max(tope - comprometida, 0.0)
         renta = simpledialog.askfloat(
             "Regla del 35%",
-            "Renta mensual que te planteas (€):",
+            (
+                f"Ingresos: {self._fmt_eur(cliente.ingresos, mensuales=True)}\n"
+                f"Tope 35%: {self._fmt_eur(tope, mensuales=True)}\n"
+                f"Ya comprometido: {self._fmt_eur(comprometida, mensuales=True)}\n"
+                f"Margen libre: {self._fmt_eur(margen, mensuales=True)}\n\n"
+                "Renta adicional que te planteas (€):"
+            ),
             parent=self,
             minvalue=1,
         )
         if renta is None:
             return
         try:
-            ok = cliente.puede_alquilar(renta)
-            tope = cliente.ingresos * 0.35
+            ok = cliente.puede_alquilar(renta, renta_ya_comprometida=comprometida)
+            total = float(renta) + comprometida
             if ok:
                 messagebox.showinfo(
                     "Elegibilidad",
-                    f"Sí puedes plantearte esa renta.\nTope 35%: {tope:,.2f} €/mes.",
+                    f"Sí puedes plantearte esa renta adicional.\n\n"
+                    f"Renta nueva: {self._fmt_eur(renta, mensuales=True)}\n"
+                    f"Total acumulado: {self._fmt_eur(total, mensuales=True)}\n"
+                    f"Tope 35%: {self._fmt_eur(tope, mensuales=True)}",
                 )
             else:
                 messagebox.showwarning(
                     "Elegibilidad",
-                    f"La renta supera el 35% de tus ingresos.\nTope: {tope:,.2f} €/mes.",
+                    f"No: el total superaría el 35% de tus ingresos.\n\n"
+                    f"Renta nueva: {self._fmt_eur(renta, mensuales=True)}\n"
+                    f"Ya comprometido: {self._fmt_eur(comprometida, mensuales=True)}\n"
+                    f"Total: {self._fmt_eur(total, mensuales=True)}\n"
+                    f"Tope 35%: {self._fmt_eur(tope, mensuales=True)}\n"
+                    f"Margen libre: {self._fmt_eur(margen, mensuales=True)}",
                 )
         except ValueError as error:
             messagebox.showerror("Error", str(error))

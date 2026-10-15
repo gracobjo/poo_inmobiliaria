@@ -2,13 +2,30 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING
 
+from src.utils.constantes import CausaResolucion, IniciativaResolucion
 from src.utils.validadores import ValidadoresInmobiliarios
 
 if TYPE_CHECKING:
     from src.modelos.inquilino import Inquilino
+
+
+@dataclass(frozen=True)
+class ResolucionContrato:
+    """Resultado de la baja formal de un contrato de arrendamiento."""
+
+    causa: CausaResolucion
+    iniciativa: IniciativaResolucion
+    fecha: date
+    observaciones: str
+    dni_inquilino: str
+    renta: float
+    fianza: float
+    fecha_inicio: date
+    fecha_fin_prevista: date
 
 
 class Contrato:
@@ -154,6 +171,93 @@ class Contrato:
             referencia = referencia.date()
 
         return self._fecha_inicio <= referencia <= self._fecha_fin
+
+    def meses_transcurridos(self, en_fecha: date | None = None) -> int:
+        """Meses completos transcurridos desde el inicio hasta ``en_fecha``."""
+        referencia: date = date.today() if en_fecha is None else en_fecha
+        if hasattr(referencia, "date") and not isinstance(referencia, date):
+            referencia = referencia.date()
+        if referencia < self._fecha_inicio:
+            return 0
+        limite = min(referencia, self._fecha_fin)
+        meses = (limite.year - self._fecha_inicio.year) * 12 + (
+            limite.month - self._fecha_inicio.month
+        )
+        if limite.day < self._fecha_inicio.day:
+            meses -= 1
+        return max(meses, 0)
+
+    def preparar_resolucion(
+        self,
+        causa: CausaResolucion,
+        iniciativa: IniciativaResolucion,
+        *,
+        fecha: date | None = None,
+        observaciones: str = "",
+    ) -> ResolucionContrato:
+        """Valida la causa/iniciativa y construye el registro de resolución.
+
+        Reglas especiales:
+            - Desistimiento del inquilino: mínimo 6 meses desde el inicio (art. 11 LAU).
+            - Necesidad del propietario: mínimo 12 meses desde el inicio.
+
+        Args:
+            causa: Motivo legal de la baja.
+            iniciativa: Quién solicita la resolución.
+            fecha: Fecha efectiva (por defecto hoy).
+            observaciones: Texto libre opcional.
+
+        Returns:
+            ``ResolucionContrato`` listo para persistir.
+
+        Raises:
+            TypeError: Si ``causa`` o ``iniciativa`` no son enums válidos.
+            ValueError: Si la causa no corresponde a la iniciativa o no
+                se cumplen los plazos legales simulados.
+        """
+        if not isinstance(causa, CausaResolucion):
+            raise TypeError("La causa debe ser un valor de CausaResolucion.")
+        if not isinstance(iniciativa, IniciativaResolucion):
+            raise TypeError("La iniciativa debe ser un valor de IniciativaResolucion.")
+
+        fecha_res: date = date.today() if fecha is None else fecha
+        if hasattr(fecha_res, "date") and not isinstance(fecha_res, date):
+            fecha_res = fecha_res.date()
+        if not ValidadoresInmobiliarios.es_fecha_valida(fecha_res):
+            raise ValueError("La fecha de resolución no es válida.")
+        if fecha_res < self._fecha_inicio:
+            raise ValueError("La resolución no puede ser anterior al inicio del contrato.")
+
+        causas_ok = CausaResolucion.para_iniciativa(iniciativa)
+        if causa not in causas_ok:
+            raise ValueError(
+                f"La causa «{causa.descripcion}» no puede invocarse "
+                f"por iniciativa {iniciativa.etiqueta}."
+            )
+
+        meses = self.meses_transcurridos(fecha_res)
+        if causa is CausaResolucion.DESISTIMIENTO_INQUILINO and meses < 6:
+            raise ValueError(
+                "El desistimiento del inquilino requiere al menos 6 meses "
+                f"de contrato (art. 11 LAU). Lleváis {meses} mes(es)."
+            )
+        if causa is CausaResolucion.NECESIDAD_PROPIETARIO and meses < 12:
+            raise ValueError(
+                "La necesidad de vivienda del propietario requiere al menos "
+                f"12 meses de contrato. Lleváis {meses} mes(es)."
+            )
+
+        return ResolucionContrato(
+            causa=causa,
+            iniciativa=iniciativa,
+            fecha=fecha_res,
+            observaciones=(observaciones or "").strip(),
+            dni_inquilino=self._inquilino.dni,
+            renta=self._renta,
+            fianza=self._fianza,
+            fecha_inicio=self._fecha_inicio,
+            fecha_fin_prevista=self._fecha_fin,
+        )
 
     def __repr__(self) -> str:
         return (

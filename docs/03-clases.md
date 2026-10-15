@@ -5,10 +5,12 @@
 | Clase | Módulo | Rol |
 |---|---|---|
 | `EstadoCasa` | `utils/constantes.py` | Enum de estado de vivienda |
-| `TipoOperacion` | `utils/constantes.py` | Enum de operaciones |
+| `TipoOperacion` | `utils/constantes.py` | Enum de operaciones (incl. `RESOLUCION`) |
+| `IniciativaResolucion` | `utils/constantes.py` | Quién solicita la baja del contrato |
+| `CausaResolucion` | `utils/constantes.py` | Causas LAU de resolución |
 | `ValidadoresInmobiliarios` | `utils/validadores.py` | Validaciones estáticas |
 | `Inquilino` | `modelos/inquilino.py` | Cliente / inquilino |
-| `Contrato` | `modelos/contrato.py` | Contrato de alquiler |
+| `Contrato` / `ResolucionContrato` | `modelos/contrato.py` | Contrato y baja formal |
 | `Casa` | `modelos/casa.py` | Vivienda (núcleo) |
 | `GestionInmobiliaria` | `servicios/gestion_inmobiliaria.py` | Cartera en memoria |
 | `Database` | `persistencia/database.py` | Conexión y esquema SQLite |
@@ -22,7 +24,11 @@
 
 **EstadoCasa:** `DISPONIBLE`, `RESERVADA`, `VENDIDA`, `ALQUILADA`, `EN_REFORMA`
 
-**TipoOperacion:** `VENTA`, `ALQUILER`, `REFORMA`, `DECORACION`
+**TipoOperacion:** `VENTA`, `ALQUILER`, `REFORMA`, `DECORACION`, `RESOLUCION`
+
+**IniciativaResolucion:** `ARRENDADOR`, `ARRENDATARIO`, `AJENA`
+
+**CausaResolucion:** causas tipadas (impagos, desistimiento, mutuo acuerdo, etc.) con `descripcion`, `iniciativa` y `para_iniciativa(...)`.
 
 ---
 
@@ -36,6 +42,7 @@ Métodos estáticos:
 | `es_string_no_vacio(texto)` | Cadena con contenido |
 | `es_cp_valido(cp)` | CP español 01000–52999 |
 | `es_fecha_valida(fecha)` | `date`/`datetime`/string ISO |
+| `parsear_importe(texto)` | Euros en formato ES/EN (`250.000`, `250,000`, `250k`…) |
 
 ---
 
@@ -47,14 +54,16 @@ Métodos estáticos:
 | `_dni` / `dni` | `str` | Privado, property solo lectura |
 | `telefono` | `str` | Público |
 | `_ingresos` / `ingresos` | `float` | Property con setter validado |
+| `tope_renta` | `float` | `ingresos * 0.35` (solo lectura) |
 
 **Métodos**
 
-- `puede_alquilar(renta_mensual) -> bool` — regla del **35 %** (`renta <= ingresos * 0.35`)
+- `puede_alquilar(renta_mensual, renta_ya_comprometida=0) -> bool` — regla del **35 % acumulada**  
+  (`renta + comprometida <= ingresos * 0.35`)
 
 ---
 
-## `Contrato`
+## `Contrato` / `ResolucionContrato`
 
 Atributos encapsulados (properties): `inquilino`, `fecha_inicio`, `fecha_fin`, `renta`, `fianza`
 
@@ -62,6 +71,10 @@ Atributos encapsulados (properties): `inquilino`, `fecha_inicio`, `fecha_fin`, `
 |---|---|
 | `calcular_total_pagado(hasta=None)` | Fianza + renta × meses completos |
 | `esta_vigente(en_fecha=None)` | `inicio <= fecha <= fin` |
+| `meses_transcurridos(en_fecha=None)` | Meses completos desde el inicio |
+| `preparar_resolucion(causa, iniciativa, ...)` | Valida causa/plazos y devuelve `ResolucionContrato` |
+
+`ResolucionContrato` (dataclass inmutable): causa, iniciativa, fecha, observaciones y snapshot del contrato.
 
 ---
 
@@ -86,7 +99,8 @@ Atributos encapsulados (properties): `inquilino`, `fecha_inicio`, `fecha_fin`, `
 | `reservar()` | `DISPONIBLE` → `RESERVADA` |
 | `liberar()` | `RESERVADA`/`ALQUILADA` → `DISPONIBLE` |
 | `comprar()` | Aplica AITP; estado `VENDIDA` |
-| `alquilar(...)` | Crea `Contrato`; estado `ALQUILADA` |
+| `alquilar(..., renta_ya_comprometida=0)` | Crea `Contrato`; estado `ALQUILADA` (35 % acumulado) |
+| `resolver_contrato(causa, iniciativa, ...)` | Baja formal; estado `DISPONIBLE` + `RESOLUCION` |
 | `decorar(coste)` | Suma coste al precio |
 | `reformar(coste)` | Suma coste+IVA; estado `EN_REFORMA` |
 | `finalizar_reforma()` | `EN_REFORMA` → `DISPONIBLE` |
@@ -126,7 +140,7 @@ Lista privada `_propiedades`.
 ## `Database`
 
 - Abre/crea fichero SQLite
-- Crea tablas (`casas`, `clientes`, `contratos`, `solicitudes`)
+- Crea tablas (`casas`, `clientes`, `contratos`, `solicitudes`, `resoluciones_contrato`)
 - Expone `conexion` y `cerrar()`
 
 ---
@@ -139,6 +153,7 @@ Traduce objetos ↔ filas:
 - Clientes: `guardar_cliente`, `obtener_cliente_por_dni`
 - Solicitudes: `crear_solicitud`, `listar_solicitudes`, `actualizar_estado_solicitud`
 - Contratos: sincronizados al guardar una casa alquilada
+- Resoluciones: `registrar_resolucion`, `listar_resoluciones`
 
 ---
 
@@ -152,6 +167,11 @@ Fachada usada por la UI.
 | `agregar_casa(casa)` | Memoria + SQLite |
 | `sincronizar(casa)` | Persiste cambios y recarga |
 | `obtener_casa(id)` | Búsqueda por id |
+| `guardar_cliente` / `obtener_cliente_por_dni` | Perfil de cliente en SQLite |
+| `listar_contratos()` | Pares `(casa, contrato)` vigentes |
+| `renta_comprometida(dni)` | Suma de rentas vigentes del DNI |
+| `resolver_contrato(...)` | Baja formal + historial + sincronizar |
+| `listar_resoluciones(...)` | Historial de bajas |
 | `crear_solicitud(...)` | Interés del cliente |
 | `listar_solicitudes(...)` | Bandeja del agente |
 | `atender_solicitud(id)` | Marca `ATENDIDA` |
@@ -166,8 +186,8 @@ Hereda de `tk.Tk`.
 Responsabilidades:
 
 1. Pantalla de selección de perfil
-2. Panel Agente (tabla + acciones)
-3. Panel Cliente (perfil, filtros, solicitudes)
-4. Estilos visuales y diálogos
+2. Panel Agente (tabla + acciones, contratos y resoluciones)
+3. Panel Cliente (perfil cargar/guardar, filtros, contratos, solicitudes)
+4. Estilos visuales, tarjetas de contrato y diálogos de baja
 
-Métodos clave: `_mostrar_inicio`, `_mostrar_agente`, `_mostrar_cliente`, `_cliente_solicitud`, `_agente_*`.
+Métodos clave: `_mostrar_inicio`, `_mostrar_agente`, `_mostrar_cliente`, `_cliente_cargar_perfil`, `_cliente_mis_contratos`, `_dialogo_resolver_contrato`, `_agente_*`.

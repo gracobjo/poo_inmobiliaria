@@ -25,6 +25,22 @@ classDiagram
     ALQUILER
     REFORMA
     DECORACION
+    RESOLUCION
+  }
+
+  class IniciativaResolucion {
+    <<enumeration>>
+    ARRENDADOR
+    ARRENDATARIO
+    AJENA
+  }
+
+  class CausaResolucion {
+    <<enumeration>>
+    FALTA_PAGO_RENTA
+    DESISTIMIENTO_INQUILINO
+    MUTUO_ACUERDO
+    ...
   }
 
   class ValidadoresInmobiliarios {
@@ -33,6 +49,7 @@ classDiagram
     +es_string_no_vacio(texto) bool
     +es_cp_valido(cp) bool
     +es_fecha_valida(fecha) bool
+    +parsear_importe(texto) float
   }
 
   class Inquilino {
@@ -42,7 +59,8 @@ classDiagram
     -_ingresos: float
     +dni: str
     +ingresos: float
-    +puede_alquilar(renta) bool
+    +tope_renta: float
+    +puede_alquilar(renta, comprometida) bool
   }
 
   class Contrato {
@@ -53,6 +71,14 @@ classDiagram
     -_fianza: float
     +calcular_total_pagado(hasta) float
     +esta_vigente(en_fecha) bool
+    +preparar_resolucion(...) ResolucionContrato
+  }
+
+  class ResolucionContrato {
+    +causa: CausaResolucion
+    +iniciativa: IniciativaResolucion
+    +fecha: date
+    +observaciones: str
   }
 
   class Casa {
@@ -69,6 +95,7 @@ classDiagram
     +liberar()
     +comprar() float
     +alquilar(...) Contrato
+    +resolver_contrato(...) ResolucionContrato
     +decorar(coste) float
     +reformar(coste) float
     +calcular_rentabilidad(renta) float
@@ -94,6 +121,9 @@ classDiagram
     +cargar()
     +agregar_casa(casa) Casa
     +sincronizar(casa)
+    +renta_comprometida(dni) float
+    +resolver_contrato(...) ResolucionContrato
+    +listar_contratos() 
     +crear_solicitud(...) int
     +listar_solicitudes(...) dict[*]
   }
@@ -123,7 +153,13 @@ classDiagram
   Casa --> TipoOperacion
   Casa --> Contrato : 0..1
   Casa ..> Inquilino : alquilar()
+  Casa ..> CausaResolucion : resolver_contrato()
+  Casa ..> IniciativaResolucion
   Contrato --> Inquilino
+  Contrato ..> ResolucionContrato : preparar_resolucion()
+  ResolucionContrato --> CausaResolucion
+  ResolucionContrato --> IniciativaResolucion
+  CausaResolucion --> IniciativaResolucion
   Casa ..> ValidadoresInmobiliarios
   Inquilino ..> ValidadoresInmobiliarios
   Contrato ..> ValidadoresInmobiliarios
@@ -269,6 +305,8 @@ erDiagram
   CLIENTES ||--o{ CONTRATOS : firma
   CASAS ||--o{ SOLICITUDES : recibe
   CLIENTES ||--o{ SOLICITUDES : envia
+  CASAS ||--o{ RESOLUCIONES_CONTRATO : historial
+  CLIENTES ||--o{ RESOLUCIONES_CONTRATO : titular
 
   CASAS {
     int id PK
@@ -279,6 +317,7 @@ erDiagram
     real precio
     int habitaciones
     text estado
+    text tipo_vivienda
     text historial
   }
 
@@ -308,6 +347,18 @@ erDiagram
     text mensaje
     text fecha
     text estado
+  }
+
+  RESOLUCIONES_CONTRATO {
+    int id PK
+    int casa_id FK
+    int cliente_id FK
+    text iniciativa
+    text causa
+    text fecha_resolucion
+    text observaciones
+    real renta
+    real fianza
   }
 ```
 

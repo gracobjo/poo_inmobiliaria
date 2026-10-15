@@ -12,8 +12,9 @@ class Inquilino:
 
     El DNI se mantiene encapsulado (atributo privado) y solo se expone
     mediante una property de solo lectura. La capacidad de alquilar se
-    evalúa con la regla del 35 %: la renta mensual no puede superar
-    ese porcentaje de los ingresos mensuales netos.
+    evalúa con la regla del 35 %: la renta mensual (más cualquier renta
+    ya comprometida en otros contratos) no puede superar ese porcentaje
+    de los ingresos mensuales netos.
 
     Attributes:
         nombre: Nombre completo del inquilino.
@@ -82,21 +83,42 @@ class Inquilino:
             raise ValueError("Los ingresos deben ser un número positivo.")
         self._ingresos = float(valor)
 
-    def puede_alquilar(self, renta_mensual: float) -> bool:
+    @property
+    def tope_renta(self) -> float:
+        """Tope máximo de renta mensual según la regla del 35 %."""
+        return self._ingresos * self._RATIO_MAXIMO_RENTA
+
+    def puede_alquilar(
+        self,
+        renta_mensual: float,
+        renta_ya_comprometida: float = 0.0,
+    ) -> bool:
         """Evalúa si el inquilino puede asumir una renta (regla del 35 %).
+
+        La comprobación es acumulativa: suma la renta nueva a las rentas
+        ya comprometidas (otros contratos vigentes del mismo inquilino).
 
         Args:
             renta_mensual: Renta mensual solicitada en euros.
+            renta_ya_comprometida: Suma de rentas de contratos previos (>= 0).
 
         Returns:
-            ``True`` si ``renta_mensual <= ingresos * 0.35``.
+            ``True`` si ``renta_mensual + renta_ya_comprometida <= ingresos * 0.35``.
 
         Raises:
-            ValueError: Si ``renta_mensual`` no es un número positivo.
+            ValueError: Si ``renta_mensual`` no es positiva o
+                ``renta_ya_comprometida`` es negativa.
         """
         if not ValidadoresInmobiliarios.es_positivo(renta_mensual):
             raise ValueError("La renta mensual debe ser un número positivo.")
-        return float(renta_mensual) <= self._ingresos * self._RATIO_MAXIMO_RENTA
+        if not isinstance(renta_ya_comprometida, (int, float)) or isinstance(
+            renta_ya_comprometida, bool
+        ):
+            raise ValueError("La renta ya comprometida debe ser un número >= 0.")
+        if float(renta_ya_comprometida) < 0:
+            raise ValueError("La renta ya comprometida no puede ser negativa.")
+        total = float(renta_mensual) + float(renta_ya_comprometida)
+        return total <= self.tope_renta
 
     def __repr__(self) -> str:
         return (

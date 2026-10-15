@@ -75,7 +75,11 @@ La navegación **no usa rutas web**: se destruye el contenido de `_contenedor` y
 | Reservar | `_agente_reservar` | `casa.reservar` + `sincronizar` |
 | Liberar | `_agente_liberar` | `casa.liberar` + `sincronizar` |
 | Comprar (venta) | `_agente_comprar` | `casa.comprar` + `sincronizar` |
-| Alquilar… | `_agente_alquilar` | `Inquilino` + `casa.alquilar` |
+| Alquilar… | `_agente_alquilar` | `Inquilino` + `renta_comprometida` + `casa.alquilar` |
+| Ver contrato | `_agente_ver_contrato` | Tarjetas + baja arrendador |
+| Listar contratos | `_agente_listar_contratos` | `app.listar_contratos` |
+| Resolver contrato… | `_agente_resolver_contrato` | `_dialogo_resolver_contrato` |
+| Historial resoluciones | `_agente_historial_resoluciones` | `app.listar_resoluciones` |
 | Decorar… | `_agente_decorar` | `casa.decorar` |
 | Reformar… | `_agente_reformar` | `casa.reformar` |
 | Finalizar reforma | `_agente_fin_reforma` | `casa.finalizar_reforma` |
@@ -86,7 +90,9 @@ La navegación **no usa rutas web**: se destruye el contenido de `_contenedor` y
 
 - **Nueva vivienda:** `Toplevel` modal con `StringVar` + validación numérica.
 - **Alquilar / costes:** `simpledialog.askstring` / `askfloat`.
-- **Informe / solicitudes:** `Toplevel` con `Text` de solo lectura.
+- **Informe / solicitudes / historial:** `Toplevel` con `Text` de solo lectura.
+- **Contratos:** tarjetas scrollables (`_mostrar_ventana_contratos`).
+- **Resolver contrato:** `Toplevel` con `Combobox` de causas LAU + observaciones.
 
 ---
 
@@ -97,10 +103,10 @@ La navegación **no usa rutas web**: se destruye el contenido de `_contenedor` y
 ### Secciones (de arriba a abajo)
 
 1. **Cabecera** — título + Cambiar perfil  
-2. **Tu perfil** — `LabelFrame` con 4 entradas + Guardar perfil  
-3. **Filtros** — localidad, precio min/max, Buscar disponibles  
+2. **Tu perfil** — `LabelFrame` con 4 entradas + **Cargar perfil** / **Guardar perfil**  
+3. **Filtros** — localidad, precio min/max (€), pista de formatos, Buscar disponibles  
 4. **Tabla** — solo disponibles  
-5. **Barra de acciones** — detalle, solicitudes, regla 35 %
+5. **Barra de acciones** — detalle, solicitudes, regla 35 %, mis contratos  
 
 ### Columnas de la tabla cliente
 
@@ -112,8 +118,14 @@ La navegación **no usa rutas web**: se destruye el contenido de `_contenedor` y
 
 - Comprueba campos vacíos → aviso **Perfil incompleto** (lista de faltantes).
 - Convierte ingresos (`float`, admite coma decimal).
-- Crea `Inquilino` (valida DNI, etc.).
+- Crea `Inquilino` (valida DNI, etc.) y lo persiste con `app.guardar_cliente`.
 - Usado en silencio por `_exigir_cliente` antes de solicitudes.
+
+`_cliente_cargar_perfil`:
+
+- Lee el DNI del formulario → `app.obtener_cliente_por_dni` → rellena la sesión y los campos.
+
+Filtro de precio: `_parsear_filtro_precio` + `ValidadoresInmobiliarios.parsear_importe` (ES/EN/`k`/miles cortos).
 
 ### Acciones cliente
 
@@ -122,8 +134,9 @@ La navegación **no usa rutas web**: se destruye el contenido de `_contenedor` y
 | Ver detalle | `_cliente_detalle` | `messagebox` informativo |
 | Solicitar visita | `_cliente_solicitud("VISITA")` | Requiere perfil + selección |
 | Me interesa comprar | `_cliente_solicitud("COMPRA")` | Idem |
-| Me interesa alquilar | `_cliente_solicitud("ALQUILER")` | Idem |
-| Comprobar regla 35% | `_cliente_elegibilidad` | No exige casa seleccionada |
+| Me interesa alquilar | `_cliente_solicitud("ALQUILER")` | Bloqueado si no hay margen 35 % |
+| Comprobar regla 35% | `_cliente_elegibilidad` | Tiene en cuenta renta comprometida |
+| Mis contratos | `_cliente_mis_contratos` | Tarjetas + baja como arrendatario |
 
 ---
 

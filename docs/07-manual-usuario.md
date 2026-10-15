@@ -4,8 +4,8 @@
 
 **Sistema Inmobiliario POO** permite:
 
-- A la **inmobiliaria (Agente)** gestionar viviendas, ventas, alquileres y solicitudes.
-- Al **cliente** buscar pisos disponibles, pedir visitas y comprobar si una renta es asumible.
+- A la **inmobiliaria (Agente)** gestionar viviendas, ventas, alquileres, resoluciones de contrato y solicitudes.
+- Al **cliente** buscar pisos disponibles, pedir visitas, consultar sus contratos y comprobar si una renta es asumible.
 
 Los datos se guardan en el ordenador (archivo SQLite). No necesita internet.
 
@@ -37,7 +37,7 @@ Puedes cambiar de perfil en cualquier momento con **Cambiar perfil**.
 
 ## 4. Guía del Cliente
 
-### 4.1 Completar tu perfil (obligatorio para solicitar)
+### 4.1 Completar o cargar tu perfil
 
 En **Tu perfil** rellena:
 
@@ -48,15 +48,18 @@ En **Tu perfil** rellena:
 | Teléfono | 600111222 | Obligatorio |
 | Ingresos €/mes | 2500 | Número > 0 |
 
-Pulsa **Guardar perfil**.
+- **Guardar perfil:** valida los datos y los persiste en SQLite.
+- **Cargar perfil:** escribe tu DNI y pulsa el botón para recuperar un perfil ya guardado.
 
-Si intentas **Solicitar visita** con el perfil vacío, la app te avisará de los campos que faltan.
+Si intentas solicitar una visita con el perfil vacío, la app te avisará de los campos que faltan.
 
 ### 4.2 Buscar viviendas
 
-1. (Opcional) Escribe **Localidad**, **Precio min** y/o **Precio max**.
+1. (Opcional) Escribe **Localidad**, **Precio min (€)** y/o **Precio max (€)**.
 2. Pulsa **Buscar disponibles**.
 3. Solo verás viviendas en estado **DISPONIBLE**.
+
+Formatos de precio admitidos: `250000`, `250.000`, `250k` o cantidades cortas como `250` (se interpretan como miles de euros).
 
 ### 4.3 Ver una vivienda
 
@@ -76,13 +79,29 @@ Si intentas **Solicitar visita** con el perfil vacío, la app te avisará de los
 
 Un agente verá tu solicitud en el backoffice.
 
+> **Me interesa alquilar** se bloquea si tus rentas vigentes ya alcanzan o superan el tope del 35 % de tus ingresos.
+
 ### 4.5 Comprobar la regla del 35 %
 
-Sirve para saber si una renta mensual es razonable respecto a tus ingresos.
+Sirve para saber si una renta mensual (adicional) es razonable respecto a tus ingresos **y a lo que ya tienes alquilado**.
 
 1. Pulsa **Comprobar regla 35%**.
-2. Indica la renta mensual.
-3. La app te dice si cumples la regla (`renta ≤ 35 % de ingresos`).
+2. Revisa tope, renta ya comprometida y margen libre.
+3. Indica la renta adicional que te planteas.
+4. La app comprueba: `renta nueva + rentas vigentes ≤ ingresos × 0,35`.
+
+### 4.6 Mis contratos y baja como inquilino
+
+1. Pulsa **Mis contratos**.
+2. Verás tarjetas con periodo, renta, fianza y estado de vigencia, más el resumen del 35 %.
+3. En cada tarjeta, **Dar de baja el contrato…** abre un diálogo con causas de resolución por parte del **arrendatario** (y causas ajenas / mutuo acuerdo).
+
+Causas del inquilino (resumen):
+
+- Falta de reparaciones de habitabilidad
+- Perturbación del uso pacífico por el propietario
+- Desistimiento (art. 11 LAU): requiere al menos **6 meses** de contrato
+- Mutuo acuerdo, pérdida de la finca o declaración de ruina
 
 ---
 
@@ -90,7 +109,7 @@ Sirve para saber si una renta mensual es razonable respecto a tus ingresos.
 
 ### 5.1 Inventario
 
-La tabla muestra todas las viviendas (id, dirección, localidad, precio, m², habitaciones, estado) y el **valor de cartera**.
+La tabla muestra todas las viviendas (id, tipo, dirección, localidad, precio, m², habitaciones, estado) y el **valor de cartera**.
 
 ### 5.2 Alta de vivienda
 
@@ -114,9 +133,13 @@ Guía detallada: [docs/09-importacion-datos.md](09-importacion-datos.md).
 | Botón | Cuándo usarlo |
 |---|---|
 | **Reservar** | Cliente interesado; bloquea la casa |
-| **Liberar** | Cancela reserva o finaliza alquiler |
+| **Liberar** | Cancela reserva o libera alquiler sin expediente formal |
 | **Comprar (venta)** | Cierra venta (aplica impuesto AITP) |
 | **Alquilar…** | Crea contrato (pide datos del inquilino) |
+| **Ver contrato** | Detalle del contrato de una vivienda ALQUILADA |
+| **Listar contratos** | Todos los alquileres vigentes en cartera |
+| **Resolver contrato…** | Baja formal con causa LAU (iniciativa arrendador) |
+| **Historial resoluciones** | Bajas ya registradas |
 | **Decorar…** | Suma un coste de decoración al valor |
 | **Reformar…** | Obra con IVA; pasa a EN_REFORMA |
 | **Finalizar reforma** | Vuelve a DISPONIBLE |
@@ -128,10 +151,25 @@ Guía detallada: [docs/09-importacion-datos.md](09-importacion-datos.md).
 1. Selecciona una vivienda **DISPONIBLE**.
 2. **Alquilar…**
 3. Introduce nombre, DNI, teléfono, ingresos, renta y fianza.
-4. Si la renta supera el 35 % de los ingresos, la operación se rechaza.
-5. Si es válida, la casa queda **ALQUILADA** y el contrato se guarda.
+4. Si el inquilino ya tiene contratos, la app muestra tope 35 %, renta comprometida y margen.
+5. Si `renta nueva + rentas vigentes` supera el 35 % de los ingresos, la operación se rechaza.
+6. Si es válida, la casa queda **ALQUILADA** y el contrato se guarda.
 
-### 5.5 Atender solicitudes
+### 5.5 Resolver un contrato (arrendador / gestor)
+
+1. Selecciona una vivienda **ALQUILADA** (o ábrela desde Ver/Listar contratos).
+2. **Resolver contrato…** / **Dar de baja el contrato…**
+3. Elige la causa (impagos, daños, obras no consentidas, necesidad del propietario, mutuo acuerdo, etc.).
+4. Añade observaciones opcionales y confirma.
+
+La vivienda pasa a **DISPONIBLE** y la resolución queda en el historial.
+
+Notas de plazos simulados:
+
+- **Necesidad del propietario:** mínimo **12 meses** de contrato.
+- Las causas ajenas (mutuo acuerdo, ruina, pérdida de finca) están disponibles también para el arrendador.
+
+### 5.6 Atender solicitudes
 
 1. **Solicitudes de clientes**
 2. Revisa tipo (`VISITA`, `COMPRA`, `ALQUILER`), datos del cliente y mensaje.
@@ -150,11 +188,17 @@ Sí: cierra la app, elimina `data/inmobiliaria.db` y vuelve a abrirla (se regene
 **¿Por qué no veo una casa como cliente?**  
 Solo se listan las **DISPONIBLE**. Las alquiladas, vendidas o en reforma no aparecen en el portal cliente.
 
+**¿Cómo recupero mi perfil al volver a entrar?**  
+Escribe tu DNI y pulsa **Cargar perfil**.
+
 **¿El DNI se puede cambiar después?**  
-En el perfil del cliente puedes editar los campos y volver a guardar. El DNI del modelo de dominio es de solo lectura una vez creado el objeto; al guardar perfil se crea/actualiza la sesión con los valores del formulario.
+Puedes editar el formulario y volver a guardar (se actualiza/crea el cliente en SQLite). El DNI del objeto de dominio es de solo lectura una vez creado; al guardar se reconstruye la sesión con los valores del formulario.
 
 **¿Necesito crear usuario y contraseña?**  
 No en esta versión: eliges el perfil en la pantalla inicial.
+
+**¿Liberar y Resolver contrato son lo mismo?**  
+No. **Liberar** es una liberación rápida (reserva o alquiler). **Resolver contrato** registra causa legal, iniciativa y observaciones en el historial.
 
 ---
 
@@ -164,5 +208,7 @@ No en esta versión: eliges el perfil en la pantalla inicial.
 |---|---|
 | AITP | Impuesto aplicado en la compra (por defecto 10 %) |
 | IVA reforma | 21 % sobre el coste de reforma |
-| Regla 35 % | La renta no debería superar el 35 % de los ingresos |
+| Regla 35 % | La renta acumulada no debería superar el 35 % de los ingresos |
+| Renta comprometida | Suma de rentas de contratos vigentes del mismo DNI |
+| Resolución | Baja formal de un contrato con causa (LAU) |
 | Solicitud | Petición del cliente (visita/compra/alquiler) pendiente de agente |

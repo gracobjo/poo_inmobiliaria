@@ -5,9 +5,15 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-from src.modelos.contrato import Contrato
+from src.modelos.contrato import Contrato, ResolucionContrato
 from src.modelos.inquilino import Inquilino
-from src.utils.constantes import EstadoCasa, TipoOperacion, TipoVivienda
+from src.utils.constantes import (
+    CausaResolucion,
+    EstadoCasa,
+    IniciativaResolucion,
+    TipoOperacion,
+    TipoVivienda,
+)
 from src.utils.validadores import ValidadoresInmobiliarios
 
 
@@ -205,6 +211,46 @@ class Casa:
         self._contrato = None
         self._estado = EstadoCasa.DISPONIBLE
 
+    def resolver_contrato(
+        self,
+        causa: CausaResolucion,
+        iniciativa: IniciativaResolucion,
+        *,
+        fecha: date | None = None,
+        observaciones: str = "",
+    ) -> ResolucionContrato:
+        """Da de baja el contrato de arrendamiento con causa formal (LAU).
+
+        Valida la causa según la iniciativa, aplica plazos legales simulados
+        y deja la vivienda ``DISPONIBLE``.
+
+        Args:
+            causa: Motivo de resolución.
+            iniciativa: Arrendador, arrendatario o causa ajena.
+            fecha: Fecha efectiva de la baja (por defecto hoy).
+            observaciones: Detalle opcional del expediente.
+
+        Returns:
+            Registro de resolución para persistencia/historial.
+
+        Raises:
+            ValueError: Si no hay contrato vigente o la causa no es válida.
+        """
+        if self._estado != EstadoCasa.ALQUILADA or self._contrato is None:
+            raise ValueError(
+                "Solo se puede resolver el contrato de una vivienda ALQUILADA."
+            )
+        resolucion = self._contrato.preparar_resolucion(
+            causa,
+            iniciativa,
+            fecha=fecha,
+            observaciones=observaciones,
+        )
+        self._contrato = None
+        self._estado = EstadoCasa.DISPONIBLE
+        self._historial_operaciones.append(TipoOperacion.RESOLUCION)
+        return resolucion
+
     def calcular_rentabilidad(self, renta_mensual: float) -> float:
         """Calcula la rentabilidad bruta anual en porcentaje.
 
@@ -250,6 +296,7 @@ class Casa:
         fianza: float,
         fecha_inicio: date | None = None,
         meses: int = 12,
+        renta_ya_comprometida: float = 0.0,
     ) -> Contrato:
         """Alquila la vivienda a un inquilino generando un contrato.
 
@@ -259,6 +306,8 @@ class Casa:
             fianza: Fianza (>= 0).
             fecha_inicio: Inicio del contrato (por defecto hoy).
             meses: Duración en meses (>= 1).
+            renta_ya_comprometida: Rentas de otros contratos vigentes del
+                mismo inquilino (se suman en la regla del 35 %).
 
         Returns:
             Contrato de alquiler creado.
@@ -276,9 +325,13 @@ class Casa:
             )
         if not isinstance(meses, int) or isinstance(meses, bool) or meses < 1:
             raise ValueError("La duración del contrato debe ser un entero >= 1.")
-        if not inquilino.puede_alquilar(renta):
+        if not inquilino.puede_alquilar(renta, renta_ya_comprometida=renta_ya_comprometida):
+            tope = inquilino.tope_renta
+            total = float(renta) + float(renta_ya_comprometida)
             raise ValueError(
-                "El inquilino no puede alquilar: la renta supera el 35 % de sus ingresos."
+                "El inquilino no puede alquilar: la renta acumulada "
+                f"({total:,.2f} €/mes) supera el 35 % de sus ingresos "
+                f"(tope {tope:,.2f} €/mes)."
             )
 
         inicio: date = fecha_inicio if fecha_inicio is not None else date.today()

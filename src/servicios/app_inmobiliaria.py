@@ -8,10 +8,12 @@ from pathlib import Path
 from src.importacion.fuentes import FuenteDatos
 from src.importacion.importador import ImportadorDatos, ResultadoImportacion
 from src.modelos.casa import Casa
+from src.modelos.contrato import Contrato, ResolucionContrato
 from src.modelos.inquilino import Inquilino
 from src.persistencia.database import Database
 from src.persistencia.repositorio import RepositorioInmobiliario
 from src.servicios.gestion_inmobiliaria import GestionInmobiliaria
+from src.utils.constantes import CausaResolucion, IniciativaResolucion
 
 
 class AppInmobiliaria:
@@ -68,6 +70,74 @@ class AppInmobiliaria:
             if casa.id == casa_id:
                 return casa
         return None
+
+    def guardar_cliente(self, cliente: Inquilino) -> int:
+        """Persiste (inserta o actualiza) un cliente por DNI."""
+        return self._repo.guardar_cliente(cliente)
+
+    def obtener_cliente_por_dni(self, dni: str) -> Inquilino | None:
+        """Busca un cliente guardado por su DNI."""
+        return self._repo.obtener_cliente_por_dni(dni)
+
+    def listar_contratos(self) -> list[tuple[Casa, Contrato]]:
+        """Devuelve pares ``(casa, contrato)`` de alquileres en cartera."""
+        return [
+            (casa, casa.contrato)
+            for casa in self.gestion.propiedades
+            if casa.contrato is not None
+        ]
+
+    def renta_comprometida(self, dni: str, *, solo_vigentes: bool = True) -> float:
+        """Suma las rentas mensuales de contratos del DNI indicado.
+
+        Args:
+            dni: Documento del inquilino.
+            solo_vigentes: Si es ``True``, solo cuenta contratos vigentes hoy.
+
+        Returns:
+            Total de renta mensual ya comprometida en euros.
+        """
+        dni_norm = dni.strip().upper()
+        total = 0.0
+        for _casa, contrato in self.listar_contratos():
+            if contrato.inquilino.dni != dni_norm:
+                continue
+            if solo_vigentes and not contrato.esta_vigente():
+                continue
+            total += float(contrato.renta)
+        return total
+
+    def resolver_contrato(
+        self,
+        casa_id: int,
+        causa: CausaResolucion,
+        iniciativa: IniciativaResolucion,
+        *,
+        observaciones: str = "",
+        fecha: date | None = None,
+    ) -> ResolucionContrato:
+        """Da de baja un contrato, persiste el historial y sincroniza la casa."""
+        casa = self.obtener_casa(casa_id)
+        if casa is None or casa.id is None:
+            raise ValueError("La vivienda indicada no existe.")
+        resolucion = casa.resolver_contrato(
+            causa,
+            iniciativa,
+            fecha=fecha,
+            observaciones=observaciones,
+        )
+        self._repo.registrar_resolucion(casa.id, resolucion)
+        self.sincronizar(casa)
+        return resolucion
+
+    def listar_resoluciones(
+        self,
+        *,
+        dni: str | None = None,
+        casa_id: int | None = None,
+    ) -> list[dict]:
+        """Historial de bajas de contrato."""
+        return self._repo.listar_resoluciones(dni=dni, casa_id=casa_id)
 
     def crear_solicitud(
         self,

@@ -35,6 +35,74 @@ class ValidadoresInmobiliarios:
         return valor > 0
 
     @staticmethod
+    def parsear_importe(texto: str) -> float:
+        """Convierte un importe escrito por el usuario a ``float`` en euros.
+
+        Acepta formatos habituales en español e inglés, con o sin símbolo €,
+        y el sufijo ``k``/``K`` (miles). Ejemplos válidos::
+
+            250000 | 250.000 | 250,000 | 250.000,50 | 250,000.50 | 250k
+
+        Args:
+            texto: Cadena con el importe.
+
+        Returns:
+            Valor numérico en euros.
+
+        Raises:
+            ValueError: Si ``texto`` está vacío o no es un número válido.
+            TypeError: Si ``texto`` no es una cadena.
+        """
+        if not isinstance(texto, str):
+            raise TypeError("El importe debe ser una cadena.")
+        crudo = (
+            texto.strip()
+            .replace(" ", "")
+            .replace("€", "")
+            .replace("\u00a0", "")
+        )
+        if not crudo:
+            raise ValueError("El importe no puede estar vacío.")
+
+        factor = 1.0
+        if crudo[-1] in "kK":
+            factor = 1000.0
+            crudo = crudo[:-1]
+            if not crudo:
+                raise ValueError("El importe no puede estar vacío.")
+
+        if "," in crudo and "." in crudo:
+            if crudo.rfind(",") > crudo.rfind("."):
+                # ES: 250.000,50
+                normalizado = crudo.replace(".", "").replace(",", ".")
+            else:
+                # EN: 250,000.50
+                normalizado = crudo.replace(",", "")
+        elif "," in crudo:
+            partes = crudo.split(",")
+            if len(partes) == 2 and len(partes[1]) <= 2:
+                # Decimal ES: 250,5
+                normalizado = crudo.replace(",", ".")
+            else:
+                # Miles EN: 250,000
+                normalizado = crudo.replace(",", "")
+        elif "." in crudo:
+            partes = crudo.split(".")
+            if len(partes) == 2 and len(partes[1]) <= 2:
+                # Decimal EN: 250.5
+                normalizado = crudo
+            else:
+                # Miles ES: 250.000
+                normalizado = crudo.replace(".", "")
+        else:
+            normalizado = crudo
+
+        try:
+            return float(normalizado) * factor
+        except ValueError as error:
+            raise ValueError(f"Importe no válido: {texto!r}") from error
+
+    @staticmethod
     def es_string_no_vacio(texto: str) -> bool:
         """Indica si ``texto`` es una cadena con contenido significativo.
 

@@ -113,7 +113,11 @@ Buenas prácticas:
 |---|---|
 | No aparecen casas | ¿Existe `data/inmobiliaria.db`? ¿Estado `DISPONIBLE` en cliente? |
 | Error al solicitar visita | Perfil incompleto (nombre/DNI/tel/ingresos) |
-| Alquiler rechazado | Regla 35 % |
+| Perfil no se recupera | Usar **Cargar perfil** con el DNI (no el teléfono) |
+| Filtro de precio vacío | ¿Intervalo en euros completos / miles? Ver `parsear_importe` |
+| Alquiler rechazado | Regla 35 % **acumulada** (`renta_comprometida`) |
+| Desistimiento rechazado | Menos de 6 meses desde `fecha_inicio` |
+| Necesidad propietario rechazada | Menos de 12 meses de contrato |
 | CP inválido | Rango 01000–52999 |
 | Contador `total_casas` raro | `AppInmobiliaria.cargar()` lo recalcula |
 

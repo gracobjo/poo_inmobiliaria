@@ -37,7 +37,10 @@ poo_inmobiliaria/
 │       └── validadores.py
 └── tests/
     ├── test_casa.py
-    └── test_contrato.py
+    ├── test_contrato.py
+    ├── test_regla_35.py
+    ├── test_resolucion_contrato.py
+    └── test_validadores_importe.py
 ```
 
 ## Responsabilidad por carpeta
@@ -86,3 +89,4 @@ Tablas:
 - `clientes` — personas (inquilinos/interesados)
 - `contratos` — alquiler vigente por casa
 - `solicitudes` — interés del cliente (visita/compra/alquiler)
+- `resoluciones_contrato` — historial de bajas formales de alquiler

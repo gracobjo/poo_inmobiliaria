@@ -70,7 +70,10 @@ poo_inmobiliaria/
 │   └── utils/                       # Enums y validadores
 └── tests/
     ├── test_casa.py
-    └── test_contrato.py
+    ├── test_contrato.py
+    ├── test_regla_35.py
+    ├── test_resolucion_contrato.py
+    └── test_validadores_importe.py
 ```
 
 ---
@@ -96,8 +99,8 @@ Se abre una ventana tkinter con dos perfiles:
 
 | Perfil | Puede hacer |
 |---|---|
-| **Agente** | Alta de viviendas, reserva, venta, alquiler, reformas, informe y gestión de solicitudes |
-| **Cliente** | Buscar disponibles, ver detalle, solicitar visita/compra/alquiler y comprobar la regla del 35 % |
+| **Agente** | Alta de viviendas, reserva, venta, alquiler, contratos, resolución LAU, reformas, informe y solicitudes |
+| **Cliente** | Cargar/guardar perfil, buscar disponibles, solicitudes, mis contratos, baja como inquilino y regla del 35 % |
 
 Los datos se guardan en `data/inmobiliaria.db` (SQLite). La primera ejecución crea un inventario de ejemplo.
 
@@ -121,7 +124,8 @@ python -m unittest discover -s tests -v
 |---|---|
 | **AITP** | Impuesto sobre el precio en la compra (`Casa.impuesto_aitp`, por defecto 10 %) |
 | **IVA reforma** | Se aplica al coste de reforma (`Casa.iva_reforma`, por defecto 21 %) |
-| **Regla del 35 %** | La renta mensual no puede superar el 35 % de los ingresos del inquilino |
+| **Regla del 35 %** | La renta acumulada (nueva + contratos vigentes del DNI) ≤ 35 % de los ingresos |
+| **Resolución de contrato** | Baja formal con causa LAU (arrendador, arrendatario o ajena) e historial en SQLite |
 | **Rentabilidad bruta** | `(renta_mensual × 12 / precio) × 100` |
 | **Estados** | `DISPONIBLE`, `RESERVADA`, `VENDIDA`, `ALQUILADA`, `EN_REFORMA` |
 

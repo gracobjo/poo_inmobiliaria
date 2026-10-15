@@ -6,7 +6,7 @@ from datetime import date, datetime
 from typing import Any
 
 from src.modelos.casa import Casa
-from src.modelos.contrato import Contrato
+from src.modelos.contrato import Contrato, ResolucionContrato
 from src.modelos.inquilino import Inquilino
 from src.persistencia.database import Database
 from src.utils.constantes import EstadoCasa, TipoOperacion, TipoVivienda
@@ -259,6 +259,70 @@ class RepositorioInmobiliario:
             (estado.strip().upper(), solicitud_id),
         )
         self._db.conexion.commit()
+
+    # ------------------------------------------------------------------
+    # Resoluciones de contrato
+    # ------------------------------------------------------------------
+
+    def registrar_resolucion(self, casa_id: int, resolucion: ResolucionContrato) -> int:
+        """Persiste el historial de una baja de contrato."""
+        cliente = self.obtener_cliente_por_dni(resolucion.dni_inquilino)
+        if cliente is None:
+            raise ValueError(
+                f"No se encontró el cliente con DNI {resolucion.dni_inquilino}."
+            )
+        cliente_id = self.guardar_cliente(cliente)
+        cursor = self._db.conexion.execute(
+            """
+            INSERT INTO resoluciones_contrato (
+                casa_id, cliente_id, iniciativa, causa, fecha_resolucion,
+                observaciones, renta, fianza, fecha_inicio, fecha_fin_prevista
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                casa_id,
+                cliente_id,
+                resolucion.iniciativa.name,
+                resolucion.causa.name,
+                resolucion.fecha.isoformat(),
+                resolucion.observaciones,
+                resolucion.renta,
+                resolucion.fianza,
+                resolucion.fecha_inicio.isoformat(),
+                resolucion.fecha_fin_prevista.isoformat(),
+            ),
+        )
+        self._db.conexion.commit()
+        return int(cursor.lastrowid)
+
+    def listar_resoluciones(
+        self,
+        *,
+        dni: str | None = None,
+        casa_id: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Lista bajas de contrato con datos de vivienda y cliente."""
+        sql = """
+            SELECT
+                r.id, r.iniciativa, r.causa, r.fecha_resolucion, r.observaciones,
+                r.renta, r.fianza, r.fecha_inicio, r.fecha_fin_prevista,
+                c.id AS casa_id, c.direccion, c.localidad,
+                cl.nombre, cl.dni
+            FROM resoluciones_contrato r
+            JOIN casas c ON c.id = r.casa_id
+            JOIN clientes cl ON cl.id = r.cliente_id
+            WHERE 1 = 1
+        """
+        params: list[Any] = []
+        if dni:
+            sql += " AND cl.dni = ?"
+            params.append(dni.strip().upper())
+        if casa_id is not None:
+            sql += " AND r.casa_id = ?"
+            params.append(casa_id)
+        sql += " ORDER BY r.id DESC"
+        filas = self._db.conexion.execute(sql, params).fetchall()
+        return [dict(fila) for fila in filas]
 
     def contar_casas(self) -> int:
         """Número de viviendas persistidas."""
